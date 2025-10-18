@@ -1,0 +1,38 @@
+using LevadS.Delegates;
+using LevadS.Interfaces;
+
+namespace LevadS.Classes;
+
+internal class TopicStreamDispatchFilterVariantWrapper<TRequest, TResponse>(object filter)
+    : BaseTopicFilterVariantWrapper(filter), ITopicStreamDispatchFilter<TRequest, TResponse>
+{
+    private readonly object _filter = filter;
+    private StreamDispatchFilterNextDelegate<TResponse>? _next;
+
+    public async IAsyncEnumerable<TResponse> InvokeAsync(IStreamContext<TRequest> context,
+        StreamDispatchFilterNextDelegate<TResponse> next)
+    {
+        _next = next;
+        if (context is not Context baseContext)
+            throw new InvalidOperationException("Context must derive from Context");
+        var streamContext = new StreamContext<object>(baseContext);
+        var method = _filter.GetType().GetMethods().First(m => m.Name == "InvokeAsync");
+        var invoked = method.Invoke(_filter, new object[] { streamContext, (StreamDispatchFilterNextDelegate<object>)Bridge });
+        if (invoked is not IAsyncEnumerable<object> resultEnum)
+        {
+            throw new InvalidOperationException("InvokeAsync must return IAsyncEnumerable<object>");
+        }
+
+        await foreach (var response in resultEnum)
+        {
+            yield return (TResponse)response!;
+        }
+
+        yield break;
+
+        async IAsyncEnumerable<object> Bridge(string? t, Dictionary<string, object>? h)
+        {
+            await foreach (var r in _next!(t, h)) yield return r!;
+        }
+    }
+}
