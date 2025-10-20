@@ -45,7 +45,7 @@ public class SimpleStreams : BaseTestClass
     {
         builder.AddStreamHandler<SimpleRequest, SimpleResponse>(HandleStream);
         
-        builder.AddStreamHandler<Request<string, SimpleResponse>, SimpleResponse>(HandleStream);
+        builder.AddStreamHandler<string, SimpleResponse>(HandleStream);
         
         builder.AddStreamHandler<SimpleRequest, SimpleResponse>("foo", HandleStream);
         
@@ -62,6 +62,19 @@ public class SimpleStreams : BaseTestClass
     public async Task Simple()
     {
         var stream = Dispatcher.StreamAsync(new SimpleRequest());
+        await foreach (var response in stream)
+        {
+            Assert.AreEqual(nameof(SimpleResponse), response.GetType().Name);
+            Assert.AreEqual(1, _handlingCounter);
+            
+            return;
+        }
+    }
+
+    [TestMethod]
+    public async Task ExplicitResponseType()
+    {
+        var stream = Dispatcher.StreamAsync<SimpleResponse>("request");
         await foreach (var response in stream)
         {
             Assert.AreEqual(nameof(SimpleResponse), response.GetType().Name);

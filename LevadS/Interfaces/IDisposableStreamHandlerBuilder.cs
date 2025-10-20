@@ -3,8 +3,7 @@ using LevadS.Delegates;
 
 namespace LevadS.Interfaces;
 
-public interface IDisposableStreamHandlerBuilder<TRequest, TResponse> : IStreamHandlerBuilder<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>
+public interface IDisposableStreamHandlerBuilder<out TRequest, TResponse> : IStreamHandlerBuilder<TRequest, TResponse>
 {
     new IDisposableStreamHandlerBuilder<TRequest, TResponse> WithFilter(string topicPattern, StreamHandlingFilterDelegate<TRequest, TResponse> filterDelegate)
         => WithFilter<StreamHandlingFilterWrapper<TRequest, TResponse>>(topicPattern, p => new StreamHandlingFilterWrapper<TRequest, TResponse>(filterDelegate));

@@ -5,7 +5,6 @@ namespace LevadS.Classes.Extensions;
 internal static class DelegateTopicExtensions
 {
     public static bool CanHandleRequestWithTopic<TRequest, TResponse>(this Delegate del, out string? error)
-        where TRequest : IRequest<TResponse>
     {
         error = null;
 
@@ -25,7 +24,6 @@ internal static class DelegateTopicExtensions
     }
     
     public static bool CanHandleStreamWithTopic<TRequest, TResponse>(this Delegate del, out string? error)
-        where TRequest : IRequest<TResponse>
     {
         error = null;
 
@@ -101,7 +99,6 @@ internal static class DelegateTopicExtensions
     /// Uses [Request] attribute to mark request parameter (optional).
     /// </summary>
     public static async Task<TResponse> HandleRequestWithTopicAsync<TRequest, TResponse>(this Delegate del, IServiceProvider provider, IRequestContext<TRequest> requestContext)
-        where TRequest : IRequest<TResponse>
     {
         ArgumentNullException.ThrowIfNull(del);
         ArgumentNullException.ThrowIfNull(provider);
@@ -171,7 +168,6 @@ internal static class DelegateTopicExtensions
     /// Uses [Request] attribute to mark request parameter (optional).
     /// </summary>
     public static async IAsyncEnumerable<TResponse> HandleStreamWithTopicAsync<TRequest, TResponse>(this Delegate del, IServiceProvider provider, IStreamContext<TRequest> streamContext)
-        where TRequest : IRequest<TResponse>
     {
         ArgumentNullException.ThrowIfNull(del);
         ArgumentNullException.ThrowIfNull(provider);

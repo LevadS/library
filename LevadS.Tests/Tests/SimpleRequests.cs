@@ -25,7 +25,7 @@ public class SimpleRequests : BaseTestClass
             return new SimpleResponse();
         });
         
-        builder.AddRequestHandler<Request<string, SimpleResponse>, SimpleResponse>(() =>
+        builder.AddRequestHandler<string, SimpleResponse>(() =>
         {
             _handlingCounter++;
             return new SimpleResponse();
@@ -72,6 +72,15 @@ public class SimpleRequests : BaseTestClass
     public async Task Simple()
     {
         var response = await Dispatcher.RequestAsync(new SimpleRequest());
+        
+        Assert.AreEqual(nameof(SimpleResponse), response.GetType().Name);
+        Assert.AreEqual(1, _handlingCounter);
+    }
+
+    [TestMethod]
+    public async Task ExplicitResponseType()
+    {
+        var response = await Dispatcher.RequestAsync<SimpleResponse>("request");
         
         Assert.AreEqual(nameof(SimpleResponse), response.GetType().Name);
         Assert.AreEqual(1, _handlingCounter);

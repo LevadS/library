@@ -4,7 +4,6 @@ using LevadS.Classes.Extensions;
 namespace LevadS.Classes;
 
 internal class StreamHandlerDelegateWrapper<TRequest, TResponse>(IServiceProvider serviceProvider, Delegate handler) : IStreamHandler<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>
 {
     private Delegate Handler { get; } = handler;
 

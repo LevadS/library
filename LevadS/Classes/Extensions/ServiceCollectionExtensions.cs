@@ -104,7 +104,6 @@ internal static class ServiceCollectionExtensions
     #region AddTransientTopicRequestHandler
     internal static IServiceCollection AddTransientTopicRequestHandler<TRequest, TResponse, TImplementation>(
         this IServiceCollection services, string topicPattern, string key, Func<TopicHandler, TImplementation> factory)
-        where TRequest : IRequest<TResponse>
         where TImplementation : class, IRequestHandler<TRequest, TResponse>
         => services
             .AddTransient<ITopicRequestHandler<TRequest, TResponse>, TopicRequestHandler<TRequest, TResponse>>(p => 
@@ -131,7 +130,6 @@ internal static class ServiceCollectionExtensions
     #region AddTransientTopicStreamHandler
     internal static IServiceCollection AddTransientTopicStreamHandler<TRequest, TResponse, TImplementation>(
         this IServiceCollection services, string topicPattern, string key, Func<TopicHandler, TImplementation> factory)
-        where TRequest : IRequest<TResponse>
         where TImplementation : class, IStreamHandler<TRequest, TResponse>
         => services
             .AddTransient<ITopicStreamHandler<TRequest, TResponse>, TopicStreamHandler<TRequest, TResponse>>(p => 

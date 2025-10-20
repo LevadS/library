@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using LevadS.Services;
 using LevadS.Interfaces;
 using LevadS.Classes.Extensions;
+using LevadS.Delegates;
 
 namespace LevadS.Classes.Builders;
 
@@ -9,7 +10,11 @@ internal class ServicesRegister(IDispatcher dispatcher)
     : LevadSBuilder(((Dispatcher)dispatcher).ServiceCollection.Clone()),
       IHandlersRegister,
       IFiltersRegister,
-      IDispatchFiltersRegister
+      IDispatchFiltersRegister,
+      IExceptionHandlersRegister,
+      IMessageServicesRegister,
+      IRequestServicesRegister,
+      IStreamServicesRegister
 {
     private Dispatcher Dispatcher => (Dispatcher)dispatcher;
 
@@ -97,6 +102,70 @@ internal class ServicesRegister(IDispatcher dispatcher)
     IAsyncDisposable IStreamDispatchFiltersRegister.AddStreamDispatchFilter<TRequest, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory)
     {
         AddStreamDispatchFilter<TRequest, TFilter>(topicPattern, filterFactory);
+        Dispatcher.UpdateServices(ServiceCollection);
+        return new HandlerDescriptor(Dispatcher, ServiceCollection.TakeLast(1));
+    }
+
+    IAsyncDisposable IMessageExceptionHandlersRegister.AddMessageExceptionHandler<TMessage, TException>(string topicPattern,
+        MessageExceptionHandlerDelegate<TMessage, TException> exceptionHandlerDelegate)
+    {
+        ((ILevadSBuilder)this).AddMessageExceptionHandler<TMessage, TException>(topicPattern, exceptionHandlerDelegate);
+        Dispatcher.UpdateServices(ServiceCollection);
+        return new HandlerDescriptor(Dispatcher, ServiceCollection.TakeLast(1));
+    }
+
+    IAsyncDisposable IMessageExceptionHandlersRegister.AddMessageExceptionHandler<TMessage, TException, TExceptionHandler>(string topicPattern,
+        Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory)
+    {
+        ((ILevadSBuilder)this).AddMessageExceptionHandler<TMessage, TException, TExceptionHandler>(topicPattern, exceptionHandlerFactory);
+        Dispatcher.UpdateServices(ServiceCollection);
+        return new HandlerDescriptor(Dispatcher, ServiceCollection.TakeLast(1));
+    }
+
+    IAsyncDisposable IRequestExceptionHandlersRegister.AddRequestExceptionHandler<TRequest, TResponse, TException>(string topicPattern,
+        RequestExceptionHandlerDelegate<TRequest, TResponse, TException> exceptionHandlerDelegate)
+    {
+        ((ILevadSBuilder)this).AddRequestExceptionHandler<TRequest, TResponse, TException>(topicPattern, exceptionHandlerDelegate);
+        Dispatcher.UpdateServices(ServiceCollection);
+        return new HandlerDescriptor(Dispatcher, ServiceCollection.TakeLast(1));
+    }
+
+    IAsyncDisposable IRequestExceptionHandlersRegister.AddRequestExceptionHandler<TRequest, TResponse, TException, TExceptionHandler>(string topicPattern,
+        Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory)
+    {
+        ((ILevadSBuilder)this).AddRequestExceptionHandler<TRequest, TResponse, TException, TExceptionHandler>(topicPattern, exceptionHandlerFactory);
+        Dispatcher.UpdateServices(ServiceCollection);
+        return new HandlerDescriptor(Dispatcher, ServiceCollection.TakeLast(1));
+    }
+
+    IAsyncDisposable IRequestExceptionHandlersRegister.AddRequestExceptionHandler<TRequest, TException, TExceptionHandler>(string topicPattern,
+        Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory)
+    {
+        ((ILevadSBuilder)this).AddRequestExceptionHandler<TRequest, TException, TExceptionHandler>(topicPattern, exceptionHandlerFactory);
+        Dispatcher.UpdateServices(ServiceCollection);
+        return new HandlerDescriptor(Dispatcher, ServiceCollection.TakeLast(1));
+    }
+
+    IAsyncDisposable IStreamExceptionHandlersRegister.AddStreamExceptionHandler<TRequest, TResponse, TException>(string topicPattern,
+        StreamExceptionHandlerDelegate<TRequest, TResponse, TException> exceptionHandlerDelegate)
+    {
+        ((ILevadSBuilder)this).AddStreamExceptionHandler<TRequest, TResponse, TException>(topicPattern, exceptionHandlerDelegate);
+        Dispatcher.UpdateServices(ServiceCollection);
+        return new HandlerDescriptor(Dispatcher, ServiceCollection.TakeLast(1));
+    }
+
+    IAsyncDisposable IStreamExceptionHandlersRegister.AddStreamExceptionHandler<TRequest, TResponse, TException, TExceptionHandler>(string topicPattern,
+        Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory)
+    {
+        ((ILevadSBuilder)this).AddStreamExceptionHandler<TRequest, TResponse, TException, TExceptionHandler>(topicPattern, exceptionHandlerFactory);
+        Dispatcher.UpdateServices(ServiceCollection);
+        return new HandlerDescriptor(Dispatcher, ServiceCollection.TakeLast(1));
+    }
+
+    IAsyncDisposable IStreamExceptionHandlersRegister.AddStreamExceptionHandler<TRequest, TException, TExceptionHandler>(string topicPattern,
+        Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory)
+    {
+        ((ILevadSBuilder)this).AddStreamExceptionHandler<TRequest, TException, TExceptionHandler>(topicPattern, exceptionHandlerFactory);
         Dispatcher.UpdateServices(ServiceCollection);
         return new HandlerDescriptor(Dispatcher, ServiceCollection.TakeLast(1));
     }

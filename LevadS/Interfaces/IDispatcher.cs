@@ -1,5 +1,3 @@
-using LevadS.Classes;
-
 namespace LevadS;
 
 public interface IDispatcher
@@ -49,7 +47,7 @@ public interface IDispatcher
     /// <returns>Message handling task. Await this task to continue after handling is finished or
     /// dismiss it if you want to continue immediately.</returns>
     Task PublishAsync<TMessage>(TMessage message, string topic = "", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null);
-    
+
     /// <summary>
     /// Requests a response from single <a href="https://github.com/LevadS/LevadS/wiki/Request-handlers">request handler</a> using request message that implements
     /// <see cref="IRequest&lt;TResponse&gt;"/>.<br/><br/>
@@ -65,7 +63,7 @@ public interface IDispatcher
     ///   }
     /// </code>
     /// </summary>
-    /// <param name="request">Request message instance; must implement <see cref="IRequest&lt;TResponse&gt;"/></param>
+    /// <param name="request">Request message</param>
     /// <param name="topic">Request topic; default value: "" (empty string)</param>
     /// <param name="headers">Request headers; default header set: empty (null)</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -75,19 +73,21 @@ public interface IDispatcher
     Task<TResponse> RequestAsync<TResponse>(IRequest<TResponse> request, string topic = "", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null);
     
     /// <summary>
-    /// Requests a response from single <a href="https://github.com/LevadS/LevadS/wiki/Request-handlers">request handler</a> using request message that does not implement
-    /// <see cref="IRequest&lt;TResponse&gt;"/>.<br/><br/>
-    /// Request will be handled by first <a href="https://github.com/LevadS/LevadS/wiki/Handlers-matching">matching handler</a>.
-    /// Remember, for request messages that are not implementing <see cref="IRequest&lt;TResponse&gt;"/>
-    /// request handler must be registered using <see cref="Request&lt;TRequest, TResponse&gt;"/> request type, f.e.:
+    /// Requests a response from single <a href="https://github.com/LevadS/LevadS/wiki/Request-handlers">request handler</a>.<br/><br/>
+    /// Request will be handled by first <a href="https://github.com/LevadS/LevadS/wiki/Handlers-matching">matching handler</a>, f.e.:
     /// <code >
     ///   // delegate-based handler
-    ///   builder.AddRequestHandler&lt;Request&lt;string, string&gt;, string&gt;(/* ... */);
-    /// 
+    ///   builder.AddRequestHandler&lt;StringRequest, string&gt;(
+    ///       (StringRequest req) => { /* ... */ }
+    ///   );
+    ///   
     ///   // class-based handler
-    ///   class StringRequestHandler : IRequestHandler&lt;Request&lt;string, string&gt;, string&gt;
+    ///   class StringRequestHandler : IRequestHandler&lt;StringRequest, string&gt;
     ///   {
-    ///       /* ... */
+    ///       public Task&lt;string&gt; HandleAsync(IRequestContext&lt;StringRequest&gt; ctx)
+    ///       {
+    ///           /* ... */
+    ///       }
     ///   }
     /// </code>
     /// </summary>
@@ -95,12 +95,10 @@ public interface IDispatcher
     /// <param name="topic">Request topic; default value: "" (empty string)</param>
     /// <param name="headers">Request headers; default header set: empty (null)</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <typeparam name="TRequest">Type of request message</typeparam>
     /// <typeparam name="TResponse">Type of requested response message</typeparam>
     /// <returns>Request handling task. Await this task to continue after handling is finished and get a response or
     /// dismiss it if you want to continue immediately.</returns>
-    Task<TResponse> RequestAsync<TRequest, TResponse>(TRequest request, string topic = "", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
-        => RequestAsync<TResponse>(new Request<TRequest,TResponse>(request), topic, headers, cancellationToken);
+    Task<TResponse> RequestAsync<TResponse>(object request, string topic = "", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null);
     
     /// <summary>
     /// Requests a stream of responses from single <a href="https://github.com/LevadS/LevadS/wiki/Stream-handlers">stream handler</a>
@@ -110,11 +108,14 @@ public interface IDispatcher
     ///   // class-based handler
     ///   class StringStreamRequestHandler : IStreamHandler&lt;StringRequest, string&gt;
     ///   {
-    ///       /* ... */
+    ///       public IAsyncEnumerable&lt;string&gt; HandleAsync(IStreamContext&lt;StringRequest&gt; ctx)
+    ///       {
+    ///           /* ... */
+    ///       }
     ///   }
     /// </code>
     /// </summary>
-    /// <param name="request">Stream request message instance; must implement <see cref="IRequest&lt;TResponse&gt;"/></param>
+    /// <param name="request">Stream request message</param>
     /// <param name="topic">Stream request topic; default value: "" (empty string)</param>
     /// <param name="headers">Stream request headers; default header set: empty (null)</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -124,16 +125,16 @@ public interface IDispatcher
     IAsyncEnumerable<TResponse> StreamAsync<TResponse>(IRequest<TResponse> request, string topic = "", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null);
     
     /// <summary>
-    /// Requests a stream of responses from single <a href="https://github.com/LevadS/LevadS/wiki/Request-handlers">request handler</a>
-    /// using stream request message that does not implement <see cref="IRequest&lt;TResponse&gt;"/>.<br/><br/>
-    /// Request will be handled by first <a href="https://github.com/LevadS/LevadS/wiki/Handlers-matching">matching handler</a>.
-    /// Remember, for stream request messages that are not implementing <see cref="IRequest&lt;TResponse&gt;"/>
-    /// request handler must be registered using <see cref="Request&lt;TRequest, TResponse&gt;"/> request type, f.e.:
+    /// Requests a stream of responses from single <a href="https://github.com/LevadS/LevadS/wiki/Stream-handlers">stream handler</a>.<br/><br/>
+    /// Request will be handled by first <a href="https://github.com/LevadS/LevadS/wiki/Handlers-matching">matching handler</a>, f.e.:
     /// <code >
     ///   // class-based handler
-    ///   class StringStreamRequestHandler : IStreamHandler&lt;Request&lt;string, string&gt;, string&gt;
+    ///   class StringStreamRequestHandler : IStreamHandler&lt;StringRequest, string&gt;
     ///   {
-    ///       /* ... */
+    ///       public IAsyncEnumerable&lt;string&gt; HandleAsync(IStreamContext&lt;StringRequest&gt; ctx)
+    ///       {
+    ///           /* ... */
+    ///       }
     ///   }
     /// </code>
     /// </summary>
@@ -141,10 +142,8 @@ public interface IDispatcher
     /// <param name="topic">Stream request topic; default value: "" (empty string)</param>
     /// <param name="headers">Stream request headers; default header set: empty (null)</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <typeparam name="TRequest">Type of stream request message</typeparam>
     /// <typeparam name="TResponse">Type of requested streamed response message</typeparam>
     /// <returns>Request handling task. Await this task to continue after handling is finished and get a stream of
     /// responses or dismiss it if you want to continue immediately.</returns>
-    IAsyncEnumerable<TResponse> StreamAsync<TRequest, TResponse>(TRequest request, string topic = "", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
-        => StreamAsync<TResponse>(new Request<TRequest,TResponse>(request), topic, headers, cancellationToken);
+    IAsyncEnumerable<TResponse> StreamAsync<TResponse>(object request, string topic = "", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null);
 }

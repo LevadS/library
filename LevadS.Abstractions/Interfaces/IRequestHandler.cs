@@ -6,7 +6,6 @@ namespace LevadS.Interfaces;
 /// <typeparam name="TRequest">Handled request message type</typeparam>
 /// <typeparam name="TResponse">Requested response message type</typeparam>
 public interface IRequestHandler<in TRequest, TResponse> : IHandler
-    where TRequest : IRequest<TResponse>
 {
     Task<TResponse> HandleAsync(IRequestContext<TRequest> requestContext);
 }

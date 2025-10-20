@@ -4,7 +4,6 @@ using LevadS.Delegates;
 namespace LevadS.Interfaces;
 
 public interface IDisposableRequestHandlerBuilder<TRequest, TResponse> : IRequestHandlerBuilder<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>
 {
     new IDisposableRequestHandlerBuilder<TRequest, TResponse> WithFilter(string topicPattern, RequestHandlingFilterDelegate<TRequest, TResponse> filterDelegate)
         => WithFilter<RequestHandlingFilterWrapper<TRequest, TResponse>>(topicPattern, p => new RequestHandlingFilterWrapper<TRequest, TResponse>(filterDelegate));

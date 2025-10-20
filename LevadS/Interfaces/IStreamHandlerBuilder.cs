@@ -4,8 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace LevadS.Interfaces;
 
-public interface IStreamHandlerBuilder<TRequest, TResponse> : ILevadSBuilder
-    where TRequest : IRequest<TResponse>
+public interface IStreamHandlerBuilder<out TRequest, TResponse> : ILevadSBuilder
 {
     IStreamHandlerBuilder<TRequest, TResponse> WithFilter(string topicPattern, StreamHandlingFilterDelegate<TRequest, TResponse> filterDelegate)
         => WithFilter<StreamHandlingFilterWrapper<TRequest, TResponse>>(topicPattern, p => new StreamHandlingFilterWrapper<TRequest, TResponse>(filterDelegate));

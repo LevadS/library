@@ -8,7 +8,7 @@ namespace LevadS.Interfaces;
 /// <typeparam name="TRequest">Request message type</typeparam>
 /// <typeparam name="TResponse">Requested response message type</typeparam>
 /// <typeparam name="TException">Exception type</typeparam>
-public interface IRequestExceptionHandler<in TRequest, TResponse, in TException> : IExceptionHandler
+public interface IRequestExceptionHandler<in TRequest, out TResponse, in TException> : IExceptionHandler
     where TException : Exception
 {
     Task<bool> HandleAsync(IRequestExceptionContext<TRequest, TException> exceptionContext, RequestExceptionHandlerFallbackDelegate<TResponse> fallbackCallback);

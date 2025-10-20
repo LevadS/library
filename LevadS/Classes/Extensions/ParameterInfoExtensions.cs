@@ -24,7 +24,7 @@ internal static class ParameterInfoExtensions
         return false;
     }
 
-    public static bool HandleParameterFromRequest<TRequest, TResponse>(this ParameterInfo p, object?[] args, int i, IRequestContext<TRequest> requestContext) where TRequest : IRequest<TResponse>
+    public static bool HandleParameterFromRequest<TRequest, TResponse>(this ParameterInfo p, object?[] args, int i, IRequestContext<TRequest> requestContext)
     {
         if (p.ParameterType.IsAssignableFrom(typeof(TRequest)))
         {
@@ -41,7 +41,7 @@ internal static class ParameterInfoExtensions
         return false;
     }
 
-    public static bool HandleParameterFromRequest<TRequest, TResponse>(this ParameterInfo p, object?[] args, int i, IStreamContext<TRequest> streamContext) where TRequest : IRequest<TResponse>
+    public static bool HandleParameterFromRequest<TRequest, TResponse>(this ParameterInfo p, object?[] args, int i, IStreamContext<TRequest> streamContext)
     {
         if (p.ParameterType.IsAssignableFrom(typeof(TRequest)))
         {
@@ -69,7 +69,7 @@ internal static class ParameterInfoExtensions
         return false;
     }
 
-    public static bool HandleRequestContextParameter<TRequest, TResponse>(this ParameterInfo p, object?[] args, int i, IRequestContext<TRequest> requestContext) where TRequest : IRequest<TResponse>
+    public static bool HandleRequestContextParameter<TRequest, TResponse>(this ParameterInfo p, object?[] args, int i, IRequestContext<TRequest> requestContext)
     {
         if (p.ParameterType.IsInstanceOfType(requestContext))
         {
@@ -80,7 +80,7 @@ internal static class ParameterInfoExtensions
         return false;
     }
 
-    public static bool HandleRequestContextParameter<TRequest, TResponse>(this ParameterInfo p, object?[] args, int i, IStreamContext<TRequest> requestContext) where TRequest : IRequest<TResponse>
+    public static bool HandleRequestContextParameter<TRequest, TResponse>(this ParameterInfo p, object?[] args, int i, IStreamContext<TRequest> requestContext)
     {
         if (p.ParameterType.IsInstanceOfType(requestContext))
         {

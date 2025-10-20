@@ -1,0 +1,3 @@
+namespace LevadS;
+
+public interface IStreamServicesRegister : IStreamHandlersRegister, IStreamDispatchFiltersRegister, IStreamFiltersRegister, IStreamExceptionHandlersRegister;

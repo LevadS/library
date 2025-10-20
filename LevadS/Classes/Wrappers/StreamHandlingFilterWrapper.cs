@@ -4,7 +4,6 @@ using LevadS.Interfaces;
 namespace LevadS.Classes;
 
 internal class StreamHandlingFilterWrapper<TRequest, TResponse>(StreamHandlingFilterDelegate<TRequest, TResponse> filter) : IStreamHandlingFilter<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>
 {
     private StreamHandlingFilterDelegate<TRequest, TResponse> Filter { get; } = filter;
     

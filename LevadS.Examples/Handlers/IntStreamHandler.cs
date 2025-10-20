@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using LevadS.Attributes;
 using LevadS.Examples.Exceptions;
@@ -14,15 +15,15 @@ public class IntStreamHandler : IStreamHandler<IntStreamRequest, int>
         var range = Enumerable.Range(1, 100).ToArray();
         foreach (var value in range)
         {
-            // if (value % 3 == 0)
-            // {
-            //     Debug.WriteLine($"falling back to: {value}");
-            //     throw new IntException(value);
-            // }
+            if (value % 3 == 0)
+            {
+                Debug.WriteLine($"falling back to: {value}");
+                throw new IntException(value);
+            }
             
             yield return value;
             
-            // await Task.Delay(100, cancellationToken);
+            await Task.Delay(100, cancellationToken);
         }
     }
 }

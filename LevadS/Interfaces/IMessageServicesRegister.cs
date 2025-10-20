@@ -1,0 +1,3 @@
+namespace LevadS;
+
+public interface IMessageServicesRegister : IMessageHandlersRegister, IMessageDispatchFiltersRegister, IMessageFiltersRegister, IMessageExceptionHandlersRegister;

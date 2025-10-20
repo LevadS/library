@@ -48,6 +48,15 @@ public static class DependencyInjection
             .AddSingleton<IMessageDispatchFiltersRegister, ServicesRegister>()
             .AddSingleton<IRequestDispatchFiltersRegister, ServicesRegister>()
             .AddSingleton<IStreamDispatchFiltersRegister, ServicesRegister>()
+
+            .AddSingleton<IExceptionHandlersRegister, ServicesRegister>()
+            .AddSingleton<IMessageExceptionHandlersRegister, ServicesRegister>()
+            .AddSingleton<IRequestExceptionHandlersRegister, ServicesRegister>()
+            .AddSingleton<IStreamExceptionHandlersRegister, ServicesRegister>()
+            
+            .AddSingleton<IMessageServicesRegister, ServicesRegister>()
+            .AddSingleton<IRequestServicesRegister, ServicesRegister>()
+            .AddSingleton<IStreamServicesRegister, ServicesRegister>()
         ;
     }
 }

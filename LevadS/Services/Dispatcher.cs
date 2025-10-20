@@ -119,17 +119,6 @@ internal class Dispatcher : IDispatcher, IServiceManager
             }
             else
             {
-                // var handlingContext = new MessageContext<TMessage>
-                // {
-                //     Message = context.Message,
-                //     Topic = topic ?? context.Topic,
-                //     Headers = new Dictionary<string, object>(headers != null
-                //         ? headers
-                //         : context.Headers
-                //     ),
-                //     DispatchType = context.DispatchType
-                // };
-
                 context.Topic = topic ?? context.Topic;
                 context.Headers = headers ?? context.Headers;
                 
@@ -181,7 +170,6 @@ internal class Dispatcher : IDispatcher, IServiceManager
     }
 
     private Task<TResponse> InternalDispatchRequest<TRequest, TResponse>(RequestContext<TRequest> context, RequestHandlingFilterNextDelegate<TResponse> handler, CancellationToken? cancellationToken = null)
-        where TRequest : IRequest<TResponse>
     {
         var filters = ServiceProvider.GetTopicRequestDispatchFilters<TRequest, TResponse>(context).ToList();
         using var enumerator = filters.GetEnumerator();
@@ -203,17 +191,6 @@ internal class Dispatcher : IDispatcher, IServiceManager
                 return enumerator.Current.InvokeAsync(dispatchContext, callback);
             }
             
-            // var handlingContext = new RequestContext<TRequest>
-            // {
-            //     Request = requestContext.Request,
-            //     Topic = topic ?? requestContext.Topic,
-            //     Headers = new Dictionary<string, object>(headers != null
-            //         ? headers
-            //         : requestContext.Headers
-            //     ),
-            //     DispatchType = requestContext.DispatchType
-            // };
-
             context.Topic = topic ?? context.Topic;
             context.Headers = headers ?? context.Headers;
 
@@ -225,7 +202,6 @@ internal class Dispatcher : IDispatcher, IServiceManager
 
     private async IAsyncEnumerable<TResponse> InternalDispatchStream<TRequest, TResponse>(StreamContext<TRequest> context,
         StreamHandlingFilterNextDelegate<TResponse> handler, CancellationToken? cancellationToken)
-        where TRequest : IRequest<TResponse>
     {
         var filters = ServiceProvider.GetTopicStreamDispatchFilters<TRequest, TResponse>(context).ToList();
         using var enumerator = filters.GetEnumerator();
@@ -247,17 +223,6 @@ internal class Dispatcher : IDispatcher, IServiceManager
                 return enumerator.Current.InvokeAsync(dispatchContext, callback);
             }
             
-            // var handlingContext = new StreamContext<TRequest>
-            // {
-            //     Request = requestContext.Request,
-            //     Topic = topic ?? requestContext.Topic,
-            //     Headers = new Dictionary<string, object>(headers != null
-            //         ? headers
-            //         : requestContext.Headers
-            //     ),
-            //     DispatchType = requestContext.DispatchType
-            // };
-
             context.Topic = topic ?? context.Topic;
             context.Headers = headers ?? context.Headers;
 
@@ -271,7 +236,6 @@ internal class Dispatcher : IDispatcher, IServiceManager
     }
     
     private Task<TResponse> InternalRequestAsync<TRequest, TResponse>(TRequest request, string topic = "*", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
-        where TRequest : IRequest<TResponse>
     {
         var context = new RequestContext<TRequest>(ServiceProvider)
         {
@@ -296,7 +260,6 @@ internal class Dispatcher : IDispatcher, IServiceManager
     }
     
     private IAsyncEnumerable<TResponse> InternalStreamAsync<TRequest, TResponse>(TRequest request, string topic = "*", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
-        where TRequest : IRequest<TResponse>
     {
         var context = new StreamContext<TRequest>(ServiceProvider)
         {
@@ -321,7 +284,6 @@ internal class Dispatcher : IDispatcher, IServiceManager
     }
 
     private async Task<TResponse> InternalHandleRequest<TRequest, TResponse>(ITopicRequestHandler<TRequest, TResponse> requestHandler, CancellationToken? cancellationToken = null)
-        where TRequest : IRequest<TResponse>
     {
         var filters = ServiceProvider.GetTopicRequestHandlingFilters<TRequest, TResponse>((RequestContext<TRequest>)requestHandler.Context!, requestHandler.Key).ToList();
         using var enumerator = filters.GetEnumerator();
@@ -362,7 +324,6 @@ internal class Dispatcher : IDispatcher, IServiceManager
     }
 
     private async IAsyncEnumerable<TResponse> InternalHandleStream<TRequest, TResponse>(ITopicStreamHandler<TRequest, TResponse> streamHandler, CancellationToken? cancellationToken = null)
-        where TRequest : IRequest<TResponse>
     {
         var filters = ServiceProvider.GetTopicStreamHandlingFilters<TRequest, TResponse>((StreamContext<TRequest>)streamHandler.Context!, streamHandler.Key).ToList();
         using var enumerator = filters.GetEnumerator();
@@ -412,15 +373,33 @@ internal class Dispatcher : IDispatcher, IServiceManager
     public Task PublishAsync<TMessage>(TMessage message, string topic = "*", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
         => InternalMulticastAsync(message, topic, headers, cancellationToken);
 
-    public Task<TResponse> RequestAsync<TResponse>(IRequest<TResponse> request, string topic = "*", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
-        => (Task<TResponse>)GetType()
-            .GetMethod(nameof(InternalRequestAsync), BindingFlags.Instance | BindingFlags.NonPublic)!
+    private readonly MethodInfo _internalRequestAsyncMethod = typeof(Dispatcher)
+        .GetMethod(nameof(InternalRequestAsync), BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+    public Task<TResponse> RequestAsync<TResponse>(IRequest<TResponse> request, string topic = "*",
+        Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
+        => (Task<TResponse>)_internalRequestAsyncMethod
             .MakeGenericMethod(request.GetType(), typeof(TResponse))
             .Invoke(this, [request, topic, headers, cancellationToken])!;
 
-    public IAsyncEnumerable<TResponse> StreamAsync<TResponse>(IRequest<TResponse> request, string topic = "*", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
-        => (IAsyncEnumerable<TResponse>)GetType()
-            .GetMethod(nameof(InternalStreamAsync), BindingFlags.Instance | BindingFlags.NonPublic)!
+    public Task<TResponse> RequestAsync<TResponse>(object request, string topic = "",
+        Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
+        => (Task<TResponse>)_internalRequestAsyncMethod
+            .MakeGenericMethod(request.GetType(), typeof(TResponse))
+            .Invoke(this, [request, topic, headers, cancellationToken])!;
+
+    private readonly MethodInfo _internalStreamAsyncMethod = typeof(Dispatcher)
+        .GetMethod(nameof(InternalStreamAsync), BindingFlags.Instance | BindingFlags.NonPublic)!;
+    
+    public IAsyncEnumerable<TResponse> StreamAsync<TResponse>(IRequest<TResponse> request, string topic = "*",
+        Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
+        =>  (IAsyncEnumerable<TResponse>)_internalStreamAsyncMethod!
+            .MakeGenericMethod(request.GetType(), typeof(TResponse))
+            .Invoke(this, [request, topic, headers, cancellationToken])!;
+
+    public IAsyncEnumerable<TResponse> StreamAsync<TResponse>(object request, string topic = "",
+        Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
+        => (IAsyncEnumerable<TResponse>)_internalStreamAsyncMethod!
             .MakeGenericMethod(request.GetType(), typeof(TResponse))
             .Invoke(this, [request, topic, headers, cancellationToken])!;
 }

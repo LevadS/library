@@ -1,0 +1,3 @@
+namespace LevadS;
+
+public interface IRequestServicesRegister : IRequestHandlersRegister, IRequestDispatchFiltersRegister, IRequestFiltersRegister, IRequestExceptionHandlersRegister;

@@ -11,7 +11,6 @@ internal class DisposableStreamHandlerBuilder<TRequest, TResponse>(
     IServiceManager serviceManager
 )
     : StreamHandlerBuilder<TRequest, TResponse>(levadSBuilder, serviceCollection, key), IDisposableStreamHandlerBuilder<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>
 {
     private readonly HandlerDescriptor _descriptor = new(serviceManager, serviceDescriptors);
     private readonly IServiceCollection _serviceCollection = serviceCollection;

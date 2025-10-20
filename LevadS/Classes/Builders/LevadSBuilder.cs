@@ -247,7 +247,6 @@ internal class LevadSBuilder(IServiceCollection serviceCollection) : ILevadSBuil
         => new MessageHandlerBuilder<TMessage>(this, serviceCollection, key);
 
     public IRequestHandlerBuilder<TRequest, TResponse> AddRequestHandler<TRequest, TResponse, THandler>(string topicPattern, Func<IServiceProvider, IRequestContext<TRequest>, THandler>? handlerFactory = null)
-        where TRequest : IRequest<TResponse>
         where THandler : class, IRequestHandler<TRequest, TResponse>
     {
         if (!topicPattern.IsValidTopicPattern(out var errorMessage))
@@ -270,11 +269,9 @@ internal class LevadSBuilder(IServiceCollection serviceCollection) : ILevadSBuil
     }
 
     protected virtual IRequestHandlerBuilder<TRequest, TResponse> CreateRequestHandlerBuilder<TRequest, TResponse>(string key, IEnumerable<ServiceDescriptor> serviceDescriptors)
-        where TRequest : IRequest<TResponse>
         => new RequestHandlerBuilder<TRequest, TResponse>(this, serviceCollection, key);
 
     public IStreamHandlerBuilder<TRequest, TResponse> AddStreamHandler<TRequest, TResponse, THandler>(string topicPattern, Func<IServiceProvider, IStreamContext<TRequest>, THandler>? handlerFactory = null)
-        where TRequest : IRequest<TResponse>
         where THandler : class, IStreamHandler<TRequest, TResponse>
     {
         if (!topicPattern.IsValidTopicPattern(out var errorMessage))
@@ -297,7 +294,6 @@ internal class LevadSBuilder(IServiceCollection serviceCollection) : ILevadSBuil
     }
 
     protected virtual IStreamHandlerBuilder<TRequest, TResponse> CreateStreamHandlerBuilder<TRequest, TResponse>(string key, IEnumerable<ServiceDescriptor> serviceDescriptors)
-        where TRequest : IRequest<TResponse>
         => new StreamHandlerBuilder<TRequest, TResponse>(this, serviceCollection, key);
 
     public ILevadSBuilder AddMessageFilter<TMessage, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory)
@@ -311,7 +307,6 @@ internal class LevadSBuilder(IServiceCollection serviceCollection) : ILevadSBuil
     }
 
     public ILevadSBuilder AddRequestFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory)
-        where TRequest : IRequest<TResponse>
         where TFilter : class, IRequestHandlingFilter<TRequest, TResponse>
     {
         filterFactory ??= serviceProvider => ActivatorUtilities.CreateInstance<TFilter>(serviceProvider);
@@ -331,7 +326,7 @@ internal class LevadSBuilder(IServiceCollection serviceCollection) : ILevadSBuil
         return this;
     }
 
-    public ILevadSBuilder AddStreamFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory) where TRequest : IRequest<TResponse> where TFilter : class, IStreamHandlingFilter<TRequest, TResponse>
+    public ILevadSBuilder AddStreamFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory)  where TFilter : class, IStreamHandlingFilter<TRequest, TResponse>
     {
         filterFactory ??= serviceProvider => ActivatorUtilities.CreateInstance<TFilter>(serviceProvider);
 
@@ -361,7 +356,6 @@ internal class LevadSBuilder(IServiceCollection serviceCollection) : ILevadSBuil
     }
 
     public ILevadSBuilder AddRequestDispatchFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory = null)
-        where TRequest : IRequest<TResponse>
         where TFilter : class, IRequestDispatchFilter<TRequest, TResponse>
     {
         filterFactory ??= serviceProvider => ActivatorUtilities.CreateInstance<TFilter>(serviceProvider);
@@ -382,7 +376,6 @@ internal class LevadSBuilder(IServiceCollection serviceCollection) : ILevadSBuil
     }
 
     public ILevadSBuilder AddStreamDispatchFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory = null)
-        where TRequest : IRequest<TResponse>
         where TFilter : class, IStreamDispatchFilter<TRequest, TResponse>
     {
         filterFactory ??= serviceProvider => ActivatorUtilities.CreateInstance<TFilter>(serviceProvider);
@@ -425,7 +418,7 @@ internal class LevadSBuilder(IServiceCollection serviceCollection) : ILevadSBuil
         return this;
     }
 
-    public ILevadSBuilder WarmUpRequestHandling<TRequest, TResponse>() where TRequest : IRequest<TResponse>
+    public ILevadSBuilder WarmUpRequestHandling<TRequest, TResponse>() 
     {
         ServiceProviderExtensions.GetVariantRequestServiceTypes<TRequest, TResponse, ITopicRequestDispatchFilter<TRequest, TResponse>>();
         ServiceProviderExtensions.GetVariantRequestServiceTypes<TRequest, TResponse, ITopicRequestHandler<TRequest, TResponse>>();
@@ -434,7 +427,7 @@ internal class LevadSBuilder(IServiceCollection serviceCollection) : ILevadSBuil
         return this;
     }
 
-    public ILevadSBuilder WarmUpStreamHandling<TRequest, TResponse>() where TRequest : IRequest<TResponse>
+    public ILevadSBuilder WarmUpStreamHandling<TRequest, TResponse>() 
     {
         ServiceProviderExtensions.GetVariantRequestServiceTypes<TRequest, TResponse, ITopicStreamDispatchFilter<TRequest, TResponse>>();
         ServiceProviderExtensions.GetVariantRequestServiceTypes<TRequest, TResponse, ITopicStreamHandler<TRequest, TResponse>>();

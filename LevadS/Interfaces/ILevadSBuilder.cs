@@ -32,42 +32,34 @@ public interface ILevadSBuilder
     
     #region AddRequestHandler
     IRequestHandlerBuilder<TRequest, TResponse> AddRequestHandler<TRequest, TResponse>(string topicPattern, Delegate handler)
-        where TRequest : IRequest<TResponse>
         => AddRequestHandler<TRequest, TResponse, RequestHandlerDelegateWrapper<TRequest, TResponse>>(topicPattern, (serviceProvider, _) => new RequestHandlerDelegateWrapper<TRequest, TResponse>(serviceProvider, handler));
     
     IRequestHandlerBuilder<TRequest, TResponse> AddRequestHandler<TRequest, TResponse>(Delegate handler)
-        where TRequest : IRequest<TResponse>
         => AddRequestHandler<TRequest, TResponse>("*", handler);
     
     IRequestHandlerBuilder<TRequest, TResponse> AddRequestHandler<TRequest, TResponse, THandler>(string topicPattern,
         Func<IServiceProvider, IRequestContext<TRequest>, THandler>? handlerFactory = null)
-        where TRequest : IRequest<TResponse>
         where THandler : class, IRequestHandler<TRequest, TResponse>;
 
     IRequestHandlerBuilder<TRequest, TResponse> AddRequestHandler<TRequest, TResponse, THandler>(
         Func<IServiceProvider, IRequestContext<TRequest>, THandler>? handlerFactory = null)
-        where TRequest : IRequest<TResponse>
         where THandler : class, IRequestHandler<TRequest, TResponse>
         => AddRequestHandler<TRequest, TResponse, THandler>("*", handlerFactory);
     #endregion
     
     #region AddStreamHandler
     IStreamHandlerBuilder<TRequest, TResponse> AddStreamHandler<TRequest, TResponse>(string topicPattern, Delegate handler)
-        where TRequest : IRequest<TResponse>
         => AddStreamHandler<TRequest, TResponse, StreamHandlerDelegateWrapper<TRequest, TResponse>>(topicPattern, (serviceProvider, _) => new StreamHandlerDelegateWrapper<TRequest, TResponse>(serviceProvider, handler));
     
     IStreamHandlerBuilder<TRequest, TResponse> AddStreamHandler<TRequest, TResponse>(Delegate handler)
-        where TRequest : IRequest<TResponse>
         => AddStreamHandler<TRequest, TResponse>("*", handler);
     
     IStreamHandlerBuilder<TRequest, TResponse> AddStreamHandler<TRequest, TResponse, THandler>(string topicPattern,
         Func<IServiceProvider, IStreamContext<TRequest>, THandler>? handlerFactory = null)
-        where TRequest : IRequest<TResponse>
         where THandler : class, IStreamHandler<TRequest, TResponse>;
 
     IStreamHandlerBuilder<TRequest, TResponse> AddStreamHandler<TRequest, TResponse, THandler>(
         Func<IServiceProvider, IStreamContext<TRequest>, THandler>? handlerFactory = null)
-        where TRequest : IRequest<TResponse>
         where THandler : class, IStreamHandler<TRequest, TResponse>
         => AddStreamHandler<TRequest, TResponse, THandler>("*", handlerFactory);
     #endregion
@@ -91,21 +83,17 @@ public interface ILevadSBuilder
     
     #region AddRequestFilter
     ILevadSBuilder AddRequestFilter<TRequest, TResponse>(string topicPattern, RequestHandlingFilterDelegate<TRequest, TResponse> filterDelegate)
-        where TRequest : IRequest<TResponse>
         => AddRequestFilter<TRequest, TResponse, RequestHandlingFilterWrapper<TRequest, TResponse>>(topicPattern, p => new RequestHandlingFilterWrapper<TRequest, TResponse>(filterDelegate));
     
     ILevadSBuilder AddRequestFilter<TRequest, TResponse>(RequestHandlingFilterDelegate<TRequest, TResponse> filterDelegate)
-        where TRequest : IRequest<TResponse>
         => AddRequestFilter<TRequest, TResponse, RequestHandlingFilterWrapper<TRequest, TResponse>>("*", p => new RequestHandlingFilterWrapper<TRequest, TResponse>(filterDelegate));
     
     ILevadSBuilder AddRequestFilter<TRequest, TResponse, TFilter>(string topicPattern,
         Func<IServiceProvider, TFilter>? filterFactory = null)
-        where TRequest : IRequest<TResponse>
         where TFilter : class, IRequestHandlingFilter<TRequest, TResponse>;
 
     ILevadSBuilder AddRequestFilter<TRequest, TResponse, TFilter>(
         Func<IServiceProvider, TFilter>? filterFactory = null)
-        where TRequest : IRequest<TResponse>
         where TFilter : class, IRequestHandlingFilter<TRequest, TResponse>
         => AddRequestFilter<TRequest, TResponse, TFilter>("*", filterFactory);
     
@@ -121,21 +109,17 @@ public interface ILevadSBuilder
     
     #region AddStreamFilter
     ILevadSBuilder AddStreamFilter<TRequest, TResponse>(string topicPattern, StreamHandlingFilterDelegate<TRequest, TResponse> filterDelegate)
-        where TRequest : IRequest<TResponse>
         => AddStreamFilter<TRequest, TResponse, StreamHandlingFilterWrapper<TRequest, TResponse>>(topicPattern, p => new StreamHandlingFilterWrapper<TRequest, TResponse>(filterDelegate));
     
     ILevadSBuilder AddStreamFilter<TRequest, TResponse>(StreamHandlingFilterDelegate<TRequest, TResponse> filterDelegate)
-        where TRequest : IRequest<TResponse>
         => AddStreamFilter<TRequest, TResponse, StreamHandlingFilterWrapper<TRequest, TResponse>>("*", p => new StreamHandlingFilterWrapper<TRequest, TResponse>(filterDelegate));
     
     ILevadSBuilder AddStreamFilter<TRequest, TResponse, TFilter>(string topicPattern,
         Func<IServiceProvider, TFilter>? filterFactory = null)
-        where TRequest : IRequest<TResponse>
         where TFilter : class, IStreamHandlingFilter<TRequest, TResponse>;
 
     ILevadSBuilder AddStreamFilter<TRequest, TResponse, TFilter>(
         Func<IServiceProvider, TFilter>? filterFactory = null)
-        where TRequest : IRequest<TResponse>
         where TFilter : class, IStreamHandlingFilter<TRequest, TResponse>
         => AddStreamFilter<TRequest, TResponse, TFilter>("*", filterFactory);
     
@@ -168,21 +152,17 @@ public interface ILevadSBuilder
     
     #region AddRequestDispatchFilter
     ILevadSBuilder AddRequestDispatchFilter<TRequest, TResponse>(string topicPattern, RequestDispatchFilterDelegate<TRequest, TResponse> filterDelegate)
-        where TRequest : IRequest<TResponse>
         => AddRequestDispatchFilter<TRequest, TResponse, RequestDispatchFilterWrapper<TRequest, TResponse>>(topicPattern, p => new RequestDispatchFilterWrapper<TRequest, TResponse>(filterDelegate));
     
     ILevadSBuilder AddRequestDispatchFilter<TRequest, TResponse>(RequestDispatchFilterDelegate<TRequest, TResponse> filterDelegate)
-        where TRequest : IRequest<TResponse>
         => AddRequestDispatchFilter<TRequest, TResponse, RequestDispatchFilterWrapper<TRequest, TResponse>>("*", p => new RequestDispatchFilterWrapper<TRequest, TResponse>(filterDelegate));
     
     ILevadSBuilder AddRequestDispatchFilter<TRequest, TResponse, TFilter>(string topicPattern,
         Func<IServiceProvider, TFilter>? filterFactory = null)
-        where TRequest : IRequest<TResponse>
         where TFilter : class, IRequestDispatchFilter<TRequest, TResponse>;
 
     ILevadSBuilder AddRequestDispatchFilter<TRequest, TResponse, TFilter>(
         Func<IServiceProvider, TFilter>? filterFactory = null)
-        where TRequest : IRequest<TResponse>
         where TFilter : class, IRequestDispatchFilter<TRequest, TResponse>
         => AddRequestDispatchFilter<TRequest, TResponse, TFilter>("*", filterFactory);
     
@@ -198,21 +178,17 @@ public interface ILevadSBuilder
     
     #region AddStreamDispatchFilter
     ILevadSBuilder AddStreamDispatchFilter<TRequest, TResponse>(string topicPattern, StreamDispatchFilterDelegate<TRequest, TResponse> filterDelegate)
-        where TRequest : IRequest<TResponse>
         => AddStreamDispatchFilter<TRequest, TResponse, StreamDispatchFilterWrapper<TRequest, TResponse>>(topicPattern, p => new StreamDispatchFilterWrapper<TRequest, TResponse>(filterDelegate));
     
     ILevadSBuilder AddStreamDispatchFilter<TRequest, TResponse>(StreamDispatchFilterDelegate<TRequest, TResponse> filterDelegate)
-        where TRequest : IRequest<TResponse>
         => AddStreamDispatchFilter<TRequest, TResponse, StreamDispatchFilterWrapper<TRequest, TResponse>>("*", p => new StreamDispatchFilterWrapper<TRequest, TResponse>(filterDelegate));
     
     ILevadSBuilder AddStreamDispatchFilter<TRequest, TResponse, TFilter>(string topicPattern,
         Func<IServiceProvider, TFilter>? filterFactory = null)
-        where TRequest : IRequest<TResponse>
         where TFilter : class, IStreamDispatchFilter<TRequest, TResponse>;
 
     ILevadSBuilder AddStreamDispatchFilter<TRequest, TResponse, TFilter>(
         Func<IServiceProvider, TFilter>? filterFactory = null)
-        where TRequest : IRequest<TResponse>
         where TFilter : class, IStreamDispatchFilter<TRequest, TResponse>
         => AddStreamDispatchFilter<TRequest, TResponse, TFilter>("*", filterFactory);
     
@@ -254,17 +230,14 @@ public interface ILevadSBuilder
     #region AddRequestExceptionHandler
     ILevadSBuilder AddRequestExceptionHandler<TRequest, TResponse, TException>(string topicPattern, RequestExceptionHandlerDelegate<TRequest, TResponse, TException> exceptionHandlerDelegate)
         where TException : Exception
-        where TRequest : IRequest<TResponse>
         => AddRequestFilter<TRequest, TResponse, RequestExceptionHandlerDelegateWrapper<TRequest, TResponse, TException>>(topicPattern, p => new RequestExceptionHandlerDelegateWrapper<TRequest, TResponse, TException>(exceptionHandlerDelegate));
     
     ILevadSBuilder AddRequestExceptionHandler<TRequest, TResponse, TException>(RequestExceptionHandlerDelegate<TRequest, TResponse, TException> exceptionHandlerDelegate)
         where TException : Exception
-        where TRequest : IRequest<TResponse>
         => AddRequestExceptionHandler("*", exceptionHandlerDelegate);
     
     ILevadSBuilder AddRequestExceptionHandler<TRequest, TResponse, TException, TExceptionHandler>(string topicPattern,
         Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory = null)
-        where TRequest : IRequest<TResponse>
         where TException : Exception
         where TExceptionHandler : class, IRequestExceptionHandler<TRequest, TResponse, TException>
         => AddRequestFilter<TRequest, TResponse, RequestExceptionHandlerWrapper<TRequest, TResponse, TException, TExceptionHandler>>(
@@ -274,7 +247,6 @@ public interface ILevadSBuilder
 
     ILevadSBuilder AddRequestExceptionHandler<TRequest, TResponse, TException, TExceptionHandler>(
         Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory = null)
-        where TRequest : IRequest<TResponse>
         where TException : Exception
         where TExceptionHandler : class, IRequestExceptionHandler<TRequest, TResponse, TException>
         => AddRequestExceptionHandler<TRequest, TResponse, TException, TExceptionHandler>("*", exceptionHandlerFactory);
@@ -298,18 +270,15 @@ public interface ILevadSBuilder
     #region AddStreamExceptionHandler
     ILevadSBuilder AddStreamExceptionHandler<TRequest, TResponse, TException>(string topicPattern, StreamExceptionHandlerDelegate<TRequest, TResponse, TException> exceptionHandlerDelegate)
         where TException : Exception
-        where TRequest : IRequest<TResponse>
         => AddStreamFilter<TRequest, TResponse, StreamExceptionHandlerDelegateWrapper<TRequest, TResponse, TException>>(topicPattern, p => new StreamExceptionHandlerDelegateWrapper<TRequest, TResponse, TException>(exceptionHandlerDelegate));
     
     ILevadSBuilder AddStreamExceptionHandler<TRequest, TResponse, TException>(StreamExceptionHandlerDelegate<TRequest, TResponse, TException> exceptionHandlerDelegate)
         where TException : Exception
-        where TRequest : IRequest<TResponse>
         => AddStreamExceptionHandler("*", exceptionHandlerDelegate);
     
     ILevadSBuilder AddStreamExceptionHandler<TRequest, TResponse, TException, TExceptionHandler>(string topicPattern,
         Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory = null)
         where TException : Exception
-        where TRequest : IRequest<TResponse>
         where TExceptionHandler : class, IStreamExceptionHandler<TRequest, TResponse, TException>
         => AddStreamFilter<TRequest, TResponse, StreamExceptionHandlerWrapper<TRequest, TResponse, TException, TExceptionHandler>>(
             topicPattern,
@@ -319,7 +288,6 @@ public interface ILevadSBuilder
     ILevadSBuilder AddStreamExceptionHandler<TRequest, TResponse, TException, TExceptionHandler>(
         Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory = null)
         where TException : Exception
-        where TRequest : IRequest<TResponse>
         where TExceptionHandler : class, IStreamExceptionHandler<TRequest, TResponse, TException>
         => AddStreamExceptionHandler<TRequest, TResponse, TException, TExceptionHandler>("*", exceptionHandlerFactory);
     
@@ -344,9 +312,7 @@ public interface ILevadSBuilder
 
     ILevadSBuilder WarmUpMessageHandling<TMessage>();
 
-    ILevadSBuilder WarmUpRequestHandling<TRequest, TResponse>()
-        where TRequest : IRequest<TResponse>;
+    ILevadSBuilder WarmUpRequestHandling<TRequest, TResponse>();
 
-    ILevadSBuilder WarmUpStreamHandling<TRequest, TResponse>()
-        where TRequest : IRequest<TResponse>;
+    ILevadSBuilder WarmUpStreamHandling<TRequest, TResponse>();
 }

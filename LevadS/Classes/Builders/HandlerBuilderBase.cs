@@ -57,10 +57,8 @@ public abstract class HandlerBuilderBase(ILevadSBuilder levadSBuilder) : ILevadS
         => levadSBuilder.WarmUpMessageHandling<TMessage>();
 
     public ILevadSBuilder WarmUpRequestHandling<TRequest, TResponse>()
-        where TRequest : IRequest<TResponse>
         => levadSBuilder.WarmUpRequestHandling<TRequest, TResponse>();
 
     public ILevadSBuilder WarmUpStreamHandling<TRequest, TResponse>()
-        where TRequest : IRequest<TResponse>
         => levadSBuilder.WarmUpStreamHandling<TRequest, TResponse>();
 }

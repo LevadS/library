@@ -13,11 +13,9 @@ internal interface ITopicHandler
 
 internal interface ITopicMessageHandler<in TMessage> : ITopicHandler, IMessageHandler<TMessage>;
 
-internal interface ITopicRequestHandler<in TRequest, TResponse> : ITopicHandler, IRequestHandler<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>;
+internal interface ITopicRequestHandler<in TRequest, TResponse> : ITopicHandler, IRequestHandler<TRequest, TResponse>;
 
-internal interface ITopicStreamHandler<in TRequest, out TResponse> : ITopicHandler, IStreamHandler<TRequest, TResponse>
-    where TRequest : IRequest<TResponse>;
+internal interface ITopicStreamHandler<in TRequest, out TResponse> : ITopicHandler, IStreamHandler<TRequest, TResponse>;
 
 internal interface ITopicMessageHandlingFilter<in TMessage> : ITopicHandler, IMessageHandlingFilter<TMessage>;
 
