@@ -11,4 +11,11 @@ internal class StreamExceptionContext<TRequest, TException> : StreamContext<TReq
     {
         Exception = exception;
     }
+
+    public override Context CloneInstance()
+        => new StreamExceptionContext<TRequest, TException>(this, Exception)
+        {
+            MessageObject = MessageObject,
+            Topic = Topic
+        };
 }

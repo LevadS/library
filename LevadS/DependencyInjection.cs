@@ -16,11 +16,22 @@ public static class DependencyInjection
     /// <returns>Extended service collection</returns>
     public static IServiceCollection AddLevadS(this IServiceCollection serviceCollection, Action<ILevadSBuilder> builder)
     {
-        builder.Invoke(new LevadSBuilder(serviceCollection));
+        var servicesContainer = new ServiceContainer();
+        serviceCollection
+            .AddSingleton(servicesContainer)
+            .AddSingleton<IServiceRegister>(servicesContainer)
+            .AddSingleton<IServiceResolver>(servicesContainer)
+            .AddRuntimeRegistrationServices()
+            .AddHostedService(serviceProvider =>
+            {
+                servicesContainer.ServiceProvider = serviceProvider;
+                return servicesContainer;
+            });
+        
+        builder.Invoke(new LevadSBuilder(servicesContainer));
         
         return serviceCollection
-            .AllowResolvingKeyedServicesAsDictionary()
-            .AddSingleton<IDispatcher>(p => new Dispatcher(serviceCollection, p))
+            .AddSingleton<IDispatcher, Dispatcher>()
             
             // .AddHostedService<LevadSHost>()
             ;
@@ -34,29 +45,29 @@ public static class DependencyInjection
         }
 
         return serviceCollection
-            .AddSingleton<IHandlersRegister, ServicesRegister>()
-            .AddSingleton<IMessageHandlersRegister, ServicesRegister>()
-            .AddSingleton<IRequestHandlersRegister, ServicesRegister>()
-            .AddSingleton<IStreamHandlersRegister, ServicesRegister>()
+            .AddSingleton<IHandlersRegister, LevadSBuilder>()
+            .AddSingleton<IMessageHandlersRegister, LevadSBuilder>()
+            .AddSingleton<IRequestHandlersRegister, LevadSBuilder>()
+            .AddSingleton<IStreamHandlersRegister, LevadSBuilder>()
 
-            .AddSingleton<IFiltersRegister, ServicesRegister>()
-            .AddSingleton<IMessageFiltersRegister, ServicesRegister>()
-            .AddSingleton<IRequestFiltersRegister, ServicesRegister>()
-            .AddSingleton<IStreamFiltersRegister, ServicesRegister>()
+            .AddSingleton<IFiltersRegister, LevadSBuilder>()
+            .AddSingleton<IMessageFiltersRegister, LevadSBuilder>()
+            .AddSingleton<IRequestFiltersRegister, LevadSBuilder>()
+            .AddSingleton<IStreamFiltersRegister, LevadSBuilder>()
 
-            .AddSingleton<IDispatchFiltersRegister, ServicesRegister>()
-            .AddSingleton<IMessageDispatchFiltersRegister, ServicesRegister>()
-            .AddSingleton<IRequestDispatchFiltersRegister, ServicesRegister>()
-            .AddSingleton<IStreamDispatchFiltersRegister, ServicesRegister>()
+            .AddSingleton<IDispatchFiltersRegister, LevadSBuilder>()
+            .AddSingleton<IMessageDispatchFiltersRegister, LevadSBuilder>()
+            .AddSingleton<IRequestDispatchFiltersRegister, LevadSBuilder>()
+            .AddSingleton<IStreamDispatchFiltersRegister, LevadSBuilder>()
 
-            .AddSingleton<IExceptionHandlersRegister, ServicesRegister>()
-            .AddSingleton<IMessageExceptionHandlersRegister, ServicesRegister>()
-            .AddSingleton<IRequestExceptionHandlersRegister, ServicesRegister>()
-            .AddSingleton<IStreamExceptionHandlersRegister, ServicesRegister>()
+            .AddSingleton<IExceptionHandlersRegister, LevadSBuilder>()
+            .AddSingleton<IMessageExceptionHandlersRegister, LevadSBuilder>()
+            .AddSingleton<IRequestExceptionHandlersRegister, LevadSBuilder>()
+            .AddSingleton<IStreamExceptionHandlersRegister, LevadSBuilder>()
             
-            .AddSingleton<IMessageServicesRegister, ServicesRegister>()
-            .AddSingleton<IRequestServicesRegister, ServicesRegister>()
-            .AddSingleton<IStreamServicesRegister, ServicesRegister>()
+            .AddSingleton<IMessageServicesRegister, LevadSBuilder>()
+            .AddSingleton<IRequestServicesRegister, LevadSBuilder>()
+            .AddSingleton<IStreamServicesRegister, LevadSBuilder>()
         ;
     }
 }

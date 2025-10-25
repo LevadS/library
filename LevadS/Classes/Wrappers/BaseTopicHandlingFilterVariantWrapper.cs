@@ -4,7 +4,7 @@ using LevadS.Interfaces;
 
 namespace LevadS.Classes;
 
-internal class BaseTopicFilterVariantWrapper(object filter) : ITopicHandler
+internal class BaseTopicFilterVariantWrapper(object filter) : IKeyedHandler
 {
     // Await a Task or Task<T> and return the result cast to the requested type (as object).
     protected static async Task<object?> AwaitAndCastAsync<TService>(Task task)

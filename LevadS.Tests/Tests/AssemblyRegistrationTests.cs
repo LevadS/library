@@ -17,9 +17,7 @@ public class AssemblyRegistrationTests : BaseTestClass
 
     protected override void InitializeLevadS(ILevadSBuilder builder)
     {
-        builder
-            .RegisterServicesFromAssemblyContaining<ObjectMessageFilter>()
-            .EnableRuntimeRegistrations();
+        builder.RegisterServicesFromAssemblyContaining<ObjectMessageFilter>();
     }
 
     [TestMethod]
@@ -121,7 +119,10 @@ public class AssemblyRegistrationTests : BaseTestClass
 
         // Reset and send a different message type that maps to no TestMessageHandler
         ScopedObjectMessageFilter.Executed = false;
-        await Dispatcher.SendAsync("string-payload", "*");
+        await Assert.ThrowsExceptionAsync<InvalidOperationException>(async () =>
+        {
+            await Dispatcher.SendAsync("string-payload", "*");
+        });
         Assert.IsFalse(ScopedObjectMessageFilter.Executed, "scoped filter should NOT run for other handlers/messages");
     }
 

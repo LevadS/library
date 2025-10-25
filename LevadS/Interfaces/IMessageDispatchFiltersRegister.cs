@@ -6,18 +6,18 @@ namespace LevadS;
 
 public interface IMessageDispatchFiltersRegister
 {
-    IAsyncDisposable AddMessageDispatchFilter<TMessage>(string topicPattern, MessageDispatchFilterDelegate<TMessage> filterDelegate)
+    IDisposable AddMessageDispatchFilter<TMessage>(string topicPattern, MessageDispatchFilterDelegate<TMessage> filterDelegate)
         => AddMessageDispatchFilter<TMessage, MessageDispatchFilterWrapper<TMessage>>(topicPattern, p => new MessageDispatchFilterWrapper<TMessage>(filterDelegate));
 
-    IAsyncDisposable AddMessageDispatchFilter<TMessage>(MessageDispatchFilterDelegate<TMessage> filterDelegate)
+    IDisposable AddMessageDispatchFilter<TMessage>(MessageDispatchFilterDelegate<TMessage> filterDelegate)
         => AddMessageDispatchFilter<TMessage, MessageDispatchFilterWrapper<TMessage>>("*", p => new MessageDispatchFilterWrapper<TMessage>(filterDelegate));
 
-    IAsyncDisposable AddMessageDispatchFilter<TMessage, TFilter>(string topicPattern,
-        Func<IServiceProvider, TFilter>? filterFactory = null)
+    IDisposable AddMessageDispatchFilter<TMessage, TFilter>(string topicPattern,
+        Func<IMessageContext<TMessage>, TFilter>? filterFactory = null)
         where TFilter : class, IMessageDispatchFilter<TMessage>;
 
-    IAsyncDisposable AddMessageDispatchFilter<TMessage, TFilter>(
-        Func<IServiceProvider, TFilter>? filterFactory = null)
+    IDisposable AddMessageDispatchFilter<TMessage, TFilter>(
+        Func<IMessageContext<TMessage>, TFilter>? filterFactory = null)
         where TFilter : class, IMessageDispatchFilter<TMessage>
         => AddMessageDispatchFilter<TMessage, TFilter>("*", filterFactory);
 }

@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LevadS.Tests", "LevadS.Test
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LevadS.Tests.Registrations", "LevadS.Tests.Registrations\LevadS.Tests.Registrations.csproj", "{03DE12D0-5F04-4B42-B4D5-A457C626D27A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LevadS.Benchmarks", "LevadS.Benchmarks\LevadS.Benchmarks.csproj", "{54914604-D71A-4CF7-8189-9C433517EAC4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +38,9 @@ Global
 		{03DE12D0-5F04-4B42-B4D5-A457C626D27A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{03DE12D0-5F04-4B42-B4D5-A457C626D27A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{03DE12D0-5F04-4B42-B4D5-A457C626D27A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{54914604-D71A-4CF7-8189-9C433517EAC4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{54914604-D71A-4CF7-8189-9C433517EAC4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{54914604-D71A-4CF7-8189-9C433517EAC4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{54914604-D71A-4CF7-8189-9C433517EAC4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

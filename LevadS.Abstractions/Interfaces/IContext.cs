@@ -11,7 +11,7 @@ public interface IContext
     
     string Topic { get; }
     
-    IReadOnlyDictionary<string, object> CapturedTopicValues { get; }
+    IReadOnlyDictionary<string, object> CapturedValues { get; }
     
     DispatchType DispatchType { get; }
     

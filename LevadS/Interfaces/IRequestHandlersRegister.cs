@@ -14,18 +14,18 @@ public interface IRequestHandlersRegister
         }
         
         return AddRequestHandler<TRequest, TResponse, RequestHandlerDelegateWrapper<TRequest, TResponse>>(topicPattern, 
-            (serviceProvider, _) => new RequestHandlerDelegateWrapper<TRequest, TResponse>(serviceProvider, handler));
+            _ => new RequestHandlerDelegateWrapper<TRequest, TResponse>(handler));
     }
 
     IDisposableRequestHandlerBuilder<TRequest, TResponse> AddRequestHandler<TRequest, TResponse>(Delegate handler)
         => AddRequestHandler<TRequest, TResponse>("*", handler);
     
     IDisposableRequestHandlerBuilder<TRequest, TResponse> AddRequestHandler<TRequest, TResponse, THandler>(string topicPattern,
-        Func<IServiceProvider, IRequestContext<TRequest>, THandler>? handlerFactory = null)
+        Func<IRequestContext<TRequest>, THandler>? handlerFactory = null)
         where THandler : class, IRequestHandler<TRequest, TResponse>;
 
     IDisposableRequestHandlerBuilder<TRequest, TResponse> AddRequestHandler<TRequest, TResponse, THandler>(
-        Func<IServiceProvider, IRequestContext<TRequest>, THandler>? handlerFactory = null)
+        Func<IRequestContext<TRequest>, THandler>? handlerFactory = null)
         where THandler : class, IRequestHandler<TRequest, TResponse>
         => AddRequestHandler<TRequest, TResponse, THandler>("*", handlerFactory);
 }

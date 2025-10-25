@@ -11,4 +11,11 @@ internal class RequestExceptionContext<TRequest, TException> : RequestContext<TR
     {
         Exception = exception;
     }
+
+    public override Context CloneInstance()
+        => new RequestExceptionContext<TRequest, TException>(this, Exception)
+        {
+            MessageObject = MessageObject,
+            Topic = Topic
+        };
 }

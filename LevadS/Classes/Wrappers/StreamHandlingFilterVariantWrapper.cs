@@ -3,8 +3,8 @@ using LevadS.Interfaces;
 
 namespace LevadS.Classes;
 
-internal class TopicStreamHandlingFilterVariantWrapper<TRequest, TResponse>(object filter)
-    : BaseTopicFilterVariantWrapper(filter), ITopicStreamHandlingFilter<TRequest, TResponse>
+internal class StreamHandlingFilterVariantWrapper<TRequest, TResponse>(object filter)
+    : BaseTopicFilterVariantWrapper(filter), IStreamHandlingFilter<TRequest, TResponse>
 {
     private readonly object _filter = filter;
     private StreamHandlingFilterNextDelegate<TResponse>? _next;

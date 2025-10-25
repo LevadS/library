@@ -18,6 +18,16 @@ builder.Services.AddLevadS(b => b
         callback(42);
         return Task.FromResult(true);
     })
+    
+    .AddMessageHandler<string>((string message) =>
+    {
+        Console.WriteLine(message);
+    })
+    .WithFilter((ctx, next) =>
+    {
+        Console.WriteLine(ctx.Message);
+        return next();
+    })
 
     .WarmUpStreamHandling<IntStreamRequest, int>()
 );

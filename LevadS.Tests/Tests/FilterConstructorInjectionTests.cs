@@ -14,7 +14,7 @@ public class FilterConstructorInjectionTests : BaseTestClass
     protected override void InitializeLevadS(ILevadSBuilder builder)
     {
         builder.RegisterServicesFromAssemblyContaining<CtorTopicRequestFilter>();
-        builder.AddRequestHandler<CtorTopicRequestFilter.TestReq, int>("di:{n:int}", (IRequestContext<CtorTopicRequestFilter.TestReq> ctx) => (int)ctx.CapturedTopicValues["n"]);
+        builder.AddRequestHandler<CtorTopicRequestFilter.TestReq, int>("di:{n:int}", (IRequestContext<CtorTopicRequestFilter.TestReq> ctx) => (int)ctx.CapturedValues["n"]);
     }
 
     [TestMethod]

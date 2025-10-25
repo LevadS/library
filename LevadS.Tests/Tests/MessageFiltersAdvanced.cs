@@ -32,7 +32,7 @@ public class MessageFiltersAdvanced : BaseTestClass
         // Order: global then keyed
         builder
             .AddMessageHandler<SimpleMessage>("ordered", () => Task.CompletedTask)
-            .WithFilter("ordered", (IServiceProvider _) => new RecordingFilter(_order, "K1"));
+            .WithFilter("ordered", _ => new RecordingFilter(_order, "K1"));
         builder.AddMessageFilter<SimpleMessage>("ordered", (ctx, next) => { _order.Enqueue("G1"); return next(); });
         builder.AddMessageFilter<SimpleMessage>("ordered", (ctx, next) => { _order.Enqueue("G2"); return next(); });
 
@@ -42,8 +42,8 @@ public class MessageFiltersAdvanced : BaseTestClass
 
         // Captured values isolation
     builder.AddMessageHandler<SimpleMessage>("cap:{v:int}:{x:int}", () => Task.CompletedTask);
-    builder.AddMessageFilter<SimpleMessage>("cap:{v:int}:#", (ctx, next) => { _capturesV.Add((int)ctx.CapturedTopicValues["v"]); return next(); });
-    builder.AddMessageFilter<SimpleMessage>("cap:#:{x:int}", (ctx, next) => { _capturesX.Add((int)ctx.CapturedTopicValues["x"]); return next(); });
+    builder.AddMessageFilter<SimpleMessage>("cap:{v:int}:#", (ctx, next) => { _capturesV.Add((int)ctx.CapturedValues["v"]); return next(); });
+    builder.AddMessageFilter<SimpleMessage>("cap:#:{x:int}", (ctx, next) => { _capturesX.Add((int)ctx.CapturedValues["x"]); return next(); });
     }
 
     private sealed class RecordingFilter(ConcurrentQueue<string> order, string marker) : IMessageHandlingFilter<SimpleMessage>

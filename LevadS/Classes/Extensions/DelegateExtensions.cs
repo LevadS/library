@@ -62,9 +62,9 @@ internal static class DelegateTopicExtensions
         {
             var parameterInfo = parameters[i];
 
-            if (parameterInfo.HandleParametersFromTopic(args, i, messageContext.CapturedTopicValues)) continue;
+            if (parameterInfo.HandleParametersFromTopic(args, i, messageContext.CapturedValues)) continue;
 
-            if (parameterInfo.HandleImplicitParametersFromTopic(args, i, messageContext.CapturedTopicValues)) continue;
+            if (parameterInfo.HandleImplicitParametersFromTopic(args, i, messageContext.CapturedValues)) continue;
 
             if (parameterInfo.HandleParameterFromMessage(args, i, (Context)messageContext)) continue;
 
@@ -112,9 +112,9 @@ internal static class DelegateTopicExtensions
         {
             var parameterInfo = parameters[i];
 
-            if (parameterInfo.HandleParametersFromTopic(args, i, requestContext.CapturedTopicValues)) continue;
+            if (parameterInfo.HandleParametersFromTopic(args, i, requestContext.CapturedValues)) continue;
 
-            if (parameterInfo.HandleImplicitParametersFromTopic(args, i, requestContext.CapturedTopicValues)) continue;
+            if (parameterInfo.HandleImplicitParametersFromTopic(args, i, requestContext.CapturedValues)) continue;
 
             if (parameterInfo.HandleParameterFromRequest<TRequest, TResponse>(args, i, requestContext)) continue;
 
@@ -181,7 +181,7 @@ internal static class DelegateTopicExtensions
         {
             var parameterInfo = parameters[i];
 
-            if (parameterInfo.HandleParametersFromTopic(args, i, streamContext.CapturedTopicValues)) continue;
+            if (parameterInfo.HandleParametersFromTopic(args, i, streamContext.CapturedValues)) continue;
 
             if (parameterInfo.HandleParameterFromRequest<TRequest, TResponse>(args, i, streamContext)) continue;
 
@@ -189,7 +189,7 @@ internal static class DelegateTopicExtensions
 
             if (parameterInfo.HandleParametersFromServiceProvider(args, i, provider)) continue;
 
-            if (parameterInfo.HandleImplicitParametersFromTopic(args, i, streamContext.CapturedTopicValues)) continue;
+            if (parameterInfo.HandleImplicitParametersFromTopic(args, i, streamContext.CapturedValues)) continue;
 
             if (parameterInfo.HandleParameterDefaultValue(args, i)) continue;
 

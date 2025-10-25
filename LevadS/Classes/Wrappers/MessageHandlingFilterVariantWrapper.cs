@@ -5,8 +5,8 @@ namespace LevadS.Classes;
 
 #pragma warning disable CS9107 // captured into the state and also passed to base
 
-internal class TopicMessageFilterVariantWrapper<TMessage>(object filter)
-    : BaseTopicFilterVariantWrapper(filter), ITopicMessageHandlingFilter<TMessage>
+internal class MessageFilterVariantWrapper<TMessage>(object filter)
+    : BaseTopicFilterVariantWrapper(filter), IMessageHandlingFilter<TMessage>
 {
     public Task InvokeAsync(IMessageContext<TMessage> context,
         MessageHandlingFilterNextDelegate next)

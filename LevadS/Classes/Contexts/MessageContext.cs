@@ -12,19 +12,22 @@ internal abstract class Context(IServiceProvider serviceProvider) : IContext
     internal Dictionary<string, object> Headers = new ();
 
     IReadOnlyDictionary<string, object> IContext.Headers => Headers;
+
+    public string Topic { get; internal set; } = "";
     
-    public string? Topic { get; internal set; }
+    public string? Key { get; internal set; }
     
     string IContext.Topic => Topic!;
     
-    internal Dictionary<string, object> CapturedTopicValues { get; init; } = new(StringComparer.OrdinalIgnoreCase);
-    IReadOnlyDictionary<string, object> IContext.CapturedTopicValues => CapturedTopicValues;
+    public IReadOnlyDictionary<string, object> CapturedValues { get; set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
     
-    public DispatchType DispatchType { get; init; }
+    public DispatchType DispatchType { get; set; }
     
-    public CancellationToken CancellationToken { get; init; }
+    public CancellationToken CancellationToken { get; set; }
     
-    public IServiceProvider ServiceProvider { get; init; } = serviceProvider;
+    public IServiceProvider ServiceProvider { get; set; } = serviceProvider;
+
+    public abstract Context CloneInstance();
 }
 
 internal class MessageContext<TMessage> : Context, IMessageContext<TMessage>
@@ -36,10 +39,7 @@ internal class MessageContext<TMessage> : Context, IMessageContext<TMessage>
         MessageObject = context.MessageObject;
         Headers = context.Headers.ToDictionary();
         Topic = context.Topic;
-        foreach (var topicValue in context.CapturedTopicValues)
-        {
-            CapturedTopicValues.Add(topicValue.Key, topicValue.Value);
-        }
+        CapturedValues = new Dictionary<string, object>(context.CapturedValues, StringComparer.OrdinalIgnoreCase);
         DispatchType = context.DispatchType;
         CancellationToken = context.CancellationToken;
     }
@@ -50,7 +50,7 @@ internal class MessageContext<TMessage> : Context, IMessageContext<TMessage>
         internal init => MessageObject = value!;
     }
 
-    public virtual Context Clone()
+    public override Context CloneInstance()
         => new MessageContext<TMessage>(this)
         {
             MessageObject = MessageObject,

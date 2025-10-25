@@ -15,8 +15,6 @@ public class DisposableHandlersTests : BaseTestClass
 
     protected override void InitializeLevadS(ILevadSBuilder builder)
     {
-        builder.EnableRuntimeRegistrations();
-        
         // No static handlers; we will register and dispose dynamically via IHandlersRegister
     }
 
@@ -43,7 +41,10 @@ public class DisposableHandlersTests : BaseTestClass
 
             // After disposing, sending again should not invoke handler nor scoped filters
             await handle.DisposeAsync();
-            await Dispatcher.SendAsync(new Msg(), "disposable");
+            await Assert.ThrowsExceptionAsync<InvalidOperationException>(async () =>
+            {
+                await Dispatcher.SendAsync(new Msg(), "disposable");
+            });
             Assert.AreEqual(1, handled);
             Assert.AreEqual(1, scoped);
         }

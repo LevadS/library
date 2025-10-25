@@ -2,7 +2,7 @@ using LevadS.Interfaces;
 
 namespace LevadS.Classes;
 
-internal class MessageExceptionContext<TMessage, TException> : RequestContext<TMessage>, IMessageExceptionContext<TMessage, TException>
+internal class MessageExceptionContext<TMessage, TException> : MessageContext<TMessage>, IMessageExceptionContext<TMessage, TException>
     where TException : Exception
 {
     public TException Exception { get; }
@@ -11,4 +11,11 @@ internal class MessageExceptionContext<TMessage, TException> : RequestContext<TM
     {
         Exception = exception;
     }
+
+    public override Context CloneInstance()
+        => new MessageExceptionContext<TMessage, TException>(this, Exception)
+        {
+            MessageObject = MessageObject,
+            Topic = Topic
+        };
 }

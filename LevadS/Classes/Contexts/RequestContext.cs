@@ -14,7 +14,7 @@ internal class RequestContext<TRequest> : MessageContext<TRequest>, IRequestCont
         internal init => Message = value;
     }
 
-    public override Context Clone()
+    public override Context CloneInstance()
         => new RequestContext<TRequest>(this)
         {
             MessageObject = MessageObject,
