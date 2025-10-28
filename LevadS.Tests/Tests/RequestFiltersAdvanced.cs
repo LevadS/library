@@ -31,9 +31,9 @@ public class RequestFiltersAdvanced : BaseTestClass
         builder.AddRequestHandler<MyReq, int>("bar", () => 10);
 
         // Captured values isolation
-        builder.AddRequestHandler<MyReq, int>("cap:{v:int}:{x:int}", (IRequestContext<MyReq> ctx) => (int)ctx.CapturedTopicValues["v"] + (int)ctx.CapturedTopicValues["x"]);
-        builder.AddRequestFilter<MyReq, int>("cap:{v:int}:#", async (ctx, next) => await next() + (int)ctx.CapturedTopicValues["v"]);
-        builder.AddRequestFilter<MyReq, int>("cap:#:{x:int}", async (ctx, next) => await next() + (int)ctx.CapturedTopicValues["x"]);
+        builder.AddRequestHandler<MyReq, int>("cap:{v:int}:{x:int}", (IRequestContext<MyReq> ctx) => (int)ctx.CapturedValues["v"] + (int)ctx.CapturedValues["x"]);
+        builder.AddRequestFilter<MyReq, int>("cap:{v:int}:#", async (ctx, next) => await next() + (int)ctx.CapturedValues["v"]);
+        builder.AddRequestFilter<MyReq, int>("cap:#:{x:int}", async (ctx, next) => await next() + (int)ctx.CapturedValues["x"]);
     }
 
     [TestMethod]

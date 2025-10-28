@@ -50,19 +50,19 @@ public class HandlingFilters : BaseTestClass
 
         builder.AddRequestHandler<IntRequest, int>("bar:#:{v:int}", (int v) => v);
         
-        builder.AddRequestFilter<IntRequest, int>("bar:{v:int}:#", async (ctx, next) => await next() + (int)ctx.CapturedTopicValues.GetValueOrDefault("v", 0));
+        builder.AddRequestFilter<IntRequest, int>("bar:{v:int}:#", async (ctx, next) => await next() + (int)ctx.CapturedValues.GetValueOrDefault("v", 0));
         
-        builder.AddRequestFilter<IntRequest, int>("bar:{x:int}:#", async (ctx, next) => await next() + (int)ctx.CapturedTopicValues.GetValueOrDefault("x", 0));
+        builder.AddRequestFilter<IntRequest, int>("bar:{x:int}:#", async (ctx, next) => await next() + (int)ctx.CapturedValues.GetValueOrDefault("x", 0));
 
         builder.AddMessageHandler<IntRequest>("bar:#:{v:int}", (int v) => _handlingCounter += v);
         
         builder.AddMessageFilter<IntRequest>("bar:{v:int}:#", (ctx, next) => {
-            _handlingCounter += (int)ctx.CapturedTopicValues.GetValueOrDefault("v", 0);
+            _handlingCounter += (int)ctx.CapturedValues.GetValueOrDefault("v", 0);
             return next();
         });
         
         builder.AddMessageFilter<IntRequest>("bar:{x:int}:#", (ctx, next) => {
-            _handlingCounter += (int)ctx.CapturedTopicValues.GetValueOrDefault("x", 0);
+            _handlingCounter += (int)ctx.CapturedValues.GetValueOrDefault("x", 0);
             return next();
         });
         

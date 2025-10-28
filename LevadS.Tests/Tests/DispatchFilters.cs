@@ -46,8 +46,11 @@ public class DispatchFilters : BaseTestClass
     public async Task TopicRewrite()
     {
         await Dispatcher.SendAsync(new SimpleMessage(), "foo");
-        await Dispatcher.SendAsync(new SimpleMessage(), "boo");
-        
+        await Assert.ThrowsExceptionAsync<InvalidOperationException>(async () =>
+        {
+            await Dispatcher.SendAsync(new SimpleMessage(), "boo");
+        });
+
         Assert.AreEqual(1, _handlingCounter);
     }
 

@@ -11,15 +11,22 @@ using Microsoft.Net.Http.Headers;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddLevadS(b => b
-    .EnableRuntimeRegistrations()
     .RegisterServicesFromAssemblyContaining<StringHandler>()
     .AddStreamExceptionHandler<IntStreamRequest, int, Exception>((ctx, callback) =>
     {
         callback(42);
         return Task.FromResult(true);
     })
-
-    .WarmUpStreamHandling<IntStreamRequest, int>()
+    
+    .AddMessageHandler<string>((string message) =>
+    {
+        Console.WriteLine(message);
+    })
+    .WithFilter((ctx, next) =>
+    {
+        Console.WriteLine(ctx.Message);
+        return next();
+    })
 );
 
 // Add services to the container.

@@ -36,8 +36,6 @@ public class DisposableFiltersTests : BaseTestClass
 
     protected override void InitializeLevadS(ILevadSBuilder builder)
     {
-        builder.EnableRuntimeRegistrations();
-        
         // Base handlers we will decorate at runtime with filters
         builder.AddMessageHandler<Msg>("m", () => { _handledMsg++; });
 
@@ -45,7 +43,7 @@ public class DisposableFiltersTests : BaseTestClass
 
         builder.AddStreamHandler<SReq, int>("s", StreamOne);
 
-        // For dispatch tests
+        // For register tests
         builder.AddMessageHandler<Msg>("md", (IMessageContext<Msg> ctx) =>
         {
             if (ctx.Headers.TryGetValue("x", out var v) && Equals(v, 1)) _hdrOk++;
@@ -61,7 +59,7 @@ public class DisposableFiltersTests : BaseTestClass
     {
         var filters = ServiceProvider.GetRequiredService<IMessageFiltersRegister>();
 
-        await using (filters.AddMessageFilter<Msg>("m", (ctx, next) => { _msgFilterHits++; return next(); }))
+        using (filters.AddMessageFilter<Msg>("m", (ctx, next) => { _msgFilterHits++; return next(); }))
         {
             await Dispatcher.SendAsync(new Msg(), "m");
             Assert.AreEqual(1, _msgFilterHits);
@@ -79,7 +77,7 @@ public class DisposableFiltersTests : BaseTestClass
     {
         var filters = ServiceProvider.GetRequiredService<IRequestFiltersRegister>();
 
-        await using (filters.AddRequestFilter<Rq, int>("r", async (ctx, next) => (await next()) + 5))
+        using (filters.AddRequestFilter<Rq, int>("r", async (ctx, next) => (await next()) + 5))
         {
             var r = await Dispatcher.RequestAsync(new Rq(), "r");
             Assert.AreEqual(15, r);
@@ -94,7 +92,7 @@ public class DisposableFiltersTests : BaseTestClass
     {
         var filters = ServiceProvider.GetRequiredService<IStreamFiltersRegister>();
 
-        await using (filters.AddStreamFilter<SReq, int>("s", AddOne))
+        using (filters.AddStreamFilter<SReq, int>("s", AddOne))
         {
             var list = new List<int>();
             await foreach (var v in Dispatcher.StreamAsync(new SReq(), "s")) list.Add(v);
@@ -114,9 +112,9 @@ public class DisposableFiltersTests : BaseTestClass
     [TestMethod]
     public async Task Disposable_MessageDispatchFilter_Applies_Then_Removed()
     {
-        var dispatch = ServiceProvider.GetRequiredService<IDispatchFiltersRegister>();
+        var register = ServiceProvider.GetRequiredService<IDispatchFiltersRegister>();
 
-        await using (dispatch.AddMessageDispatchFilter<Msg>("md", (ctx, next) => next(headers: new Dictionary<string, object>(ctx.Headers) { ["x"] = 1 })))
+        using (register.AddMessageDispatchFilter<Msg>("md", (ctx, next) => next(headers: new Dictionary<string, object>(ctx.Headers) { ["x"] = 1 })))
         {
             await Dispatcher.SendAsync(new Msg(), "md");
             Assert.AreEqual(1, _hdrOk);
@@ -129,9 +127,9 @@ public class DisposableFiltersTests : BaseTestClass
     [TestMethod]
     public async Task Disposable_RequestDispatchFilter_ShortCircuits_Then_Removed()
     {
-        var dispatch = ServiceProvider.GetRequiredService<IDispatchFiltersRegister>();
+        var register = ServiceProvider.GetRequiredService<IDispatchFiltersRegister>();
 
-        await using (dispatch.AddRequestDispatchFilter<Rq, int>("rd", (ctx, next) => Task.FromResult(99)))
+        using (register.AddRequestDispatchFilter<Rq, int>("rd", (ctx, next) => Task.FromResult(99)))
         {
             var r = await Dispatcher.RequestAsync(new Rq(), "rd");
             Assert.AreEqual(99, r);
@@ -144,14 +142,14 @@ public class DisposableFiltersTests : BaseTestClass
     [TestMethod]
     public async Task Disposable_StreamDispatchFilter_ShortCircuits_Then_Removed()
     {
-        var dispatch = ServiceProvider.GetRequiredService<IDispatchFiltersRegister>();
+        var register = ServiceProvider.GetRequiredService<IDispatchFiltersRegister>();
 
         static async IAsyncEnumerable<int> Single()
         {
             yield return 42; await Task.CompletedTask;
         }
 
-        await using (dispatch.AddStreamDispatchFilter<SReq, int>("sd", (ctx, next) => Single()))
+        using (register.AddStreamDispatchFilter<SReq, int>("sd", (ctx, next) => Single()))
         {
             var list = new List<int>();
             await foreach (var v in Dispatcher.StreamAsync(new SReq(), "sd")) list.Add(v);

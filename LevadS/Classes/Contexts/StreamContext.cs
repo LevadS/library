@@ -14,7 +14,7 @@ internal class StreamContext<TRequest> : MessageContext<TRequest>, IStreamContex
         internal init => Message = value;
     }
 
-    public override Context Clone()
+    public override Context CloneInstance()
         => new StreamContext<TRequest>(this)
         {
             MessageObject = MessageObject,

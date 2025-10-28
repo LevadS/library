@@ -1,24 +1,24 @@
 using System.Reflection;
-using Microsoft.Extensions.DependencyInjection;
 using LevadS.Classes;
-using LevadS.Classes.Builders;
+using LevadS.Classes.Envelopers;
 using LevadS.Classes.Extensions;
+using LevadS.Delegates;
 using LevadS.Extensions;
 using LevadS.Interfaces;
 
 namespace LevadS.Services;
 
-internal class LevadSBuilder(IServiceCollection serviceCollection) : ILevadSBuilder
+
+internal class LevadSBuilder(IServiceRegister serviceRegister) :
+    ILevadSBuilder,
+    IHandlersRegister,
+    IFiltersRegister,
+    IDispatchFiltersRegister,
+    IExceptionHandlersRegister,
+    IMessageServicesRegister,
+    IRequestServicesRegister,
+    IStreamServicesRegister
 {
-    protected IServiceCollection ServiceCollection => serviceCollection;
-
-    public ILevadSBuilder EnableRuntimeRegistrations()
-    {
-        ServiceCollection.AddRuntimeRegistrationServices();
-
-        return this;
-    }
-
     public ILevadSBuilder RegisterServicesFromAssemblyContaining(Type type)
     {
         var assembly = Assembly.GetAssembly(type);
@@ -27,201 +27,211 @@ internal class LevadSBuilder(IServiceCollection serviceCollection) : ILevadSBuil
             throw new NullReferenceException("The assembly is null.");
         }
         
-        ServiceCollection.RegisterServices(
+        serviceRegister.RegisterServices(
             assembly,
             typeof(IMessageHandler<>),
             (s, topicPattern, interfaceType, handlerType, scopeType) =>
             {
-                var key = $"{handlerType}";
-                
-                s.AddTransientTopicMessageHandler(
+                s.AddService(
+                    interfaceType,
+                    handlerType,
+                    interfaceType.GenericTypeArguments[0],
+                    null,
+                    NoopEnveloper.Instance,
                     topicPattern,
-                    key,
-                    interfaceType.GenericTypeArguments.First(),
-                    handlerType
+                    $"{handlerType}"
                 );
             });
         
-        ServiceCollection.RegisterServices(
+        serviceRegister.RegisterServices(
             assembly,
             typeof(IMessageDispatchFilter<>),
             (s, topicPattern, interfaceType, handlerType, scopeType) =>
             {
-                s.AddSingletonTopicMessageDispatchFilter(
-                    topicPattern,
-                    interfaceType.GenericTypeArguments.First(),
-                    handlerType
+                s.AddService(
+                    interfaceType,
+                    handlerType,
+                    interfaceType.GenericTypeArguments[0],
+                    null,
+                    MessageDispatchEnveloper.Instance,
+                    topicPattern
                 );
             });
         
-        ServiceCollection.RegisterServices(
+        serviceRegister.RegisterServices(
             assembly,
             typeof(IMessageExceptionHandler<,>),
             (s, topicPattern, interfaceType, handlerType, scopeType) =>
             {
-                var genericArgs = interfaceType.GenericTypeArguments;
-                s.AddKeyedTransientTopicMessageExceptionHandler(
+                s.AddService(
+                    interfaceType,
+                    handlerType,
+                    interfaceType.GenericTypeArguments[0],
+                    null,
+                    MessageHandlingEnveloper.Instance,
                     topicPattern,
                     scopeType != null
                         ? $"{scopeType}"
-                        : "global",
-                    genericArgs[0],
-                    genericArgs[1],
-                    handlerType
+                        : "global"
                 );
             });
         
-        ServiceCollection.RegisterServices(
+        serviceRegister.RegisterServices(
             assembly,
             typeof(IMessageHandlingFilter<>),
             (s, topicPattern, interfaceType, handlerType, scopeType) =>
             {
-                s.AddKeyedTransientTopicMessageHandlingFilter(
+                s.AddService(
+                    interfaceType,
+                    handlerType,
+                    interfaceType.GenericTypeArguments[0],
+                    null,
+                    MessageHandlingEnveloper.Instance,
                     topicPattern,
                     scopeType != null
                         ? $"{scopeType}"
-                        : "global",
-                    interfaceType.GenericTypeArguments.First(),
-                    handlerType
+                        : "global"
                 );
             });
         
-        ServiceCollection.RegisterServices(
+        serviceRegister.RegisterServices(
             assembly,
             typeof(IRequestHandler<,>),
             (s, topicPattern, interfaceType, handlerType, _) =>
             {
-                var key = $"{handlerType}";
-
-                var genericArgs = interfaceType.GenericTypeArguments;
-                s.AddTransientTopicRequestHandler(
+                s.AddService(
+                    interfaceType,
+                    handlerType,
+                    interfaceType.GenericTypeArguments[0],
+                    interfaceType.GenericTypeArguments[1],
+                    NoopEnveloper.Instance,
                     topicPattern,
-                    key,
-                    genericArgs[0],
-                    genericArgs[1],
-                    handlerType
+                    $"{handlerType}"
                 );
             });
         
-        ServiceCollection.RegisterServices(
+        serviceRegister.RegisterServices(
             assembly,
             typeof(IRequestDispatchFilter<,>),
             (s, topicPattern, interfaceType, handlerType, scopeType) =>
             {
-                var genericArgs = interfaceType.GenericTypeArguments;
-                s.AddSingletonTopicRequestDispatchFilter(
-                    topicPattern,
-                    genericArgs[0],
-                    genericArgs[1],
-                    handlerType
+                s.AddService(
+                    interfaceType,
+                    handlerType,
+                    interfaceType.GenericTypeArguments[0],
+                    interfaceType.GenericTypeArguments[1],
+                    RequestDispatchEnveloper.Instance,
+                    topicPattern
                 );
             });
         
-        ServiceCollection.RegisterServices(
+        serviceRegister.RegisterServices(
             assembly,
             typeof(IRequestHandlingFilter<,>),
             (s, topicPattern, interfaceType, handlerType, scopeType) =>
             {
-                var genericArgs = interfaceType.GenericTypeArguments;
-                s.AddKeyedTransientTopicRequestHandlingFilter(
+                s.AddService(
+                    interfaceType,
+                    handlerType,
+                    interfaceType.GenericTypeArguments[0],
+                    interfaceType.GenericTypeArguments[1],
+                    RequestHandlingEnveloper.Instance,
                     topicPattern,
                     scopeType != null
                         ? $"{scopeType}"
-                        : "global",
-                    genericArgs[0],
-                    genericArgs[1],
-                    handlerType
+                        : "global"
                 );
             });
         
-        ServiceCollection.RegisterServices(
+        serviceRegister.RegisterServices(
             assembly,
             typeof(IRequestExceptionHandler<,,>),
             (s, topicPattern, interfaceType, handlerType, scopeType) =>
             {
-                var genericArgs = interfaceType.GenericTypeArguments;
-                s.AddKeyedTransientTopicRequestExceptionHandler(
+                s.AddService(
+                    interfaceType,
+                    handlerType,
+                    interfaceType.GenericTypeArguments[0],
+                    interfaceType.GenericTypeArguments[1],
+                    RequestHandlingEnveloper.Instance,
                     topicPattern,
                     scopeType != null
                         ? $"{scopeType}"
-                        : "global",
-                    genericArgs[0],
-                    genericArgs[1],
-                    genericArgs[2],
-                    handlerType
+                        : "global"
                 );
             });
-
-        ServiceCollection.RegisterServices(
+        
+        serviceRegister.RegisterServices(
             assembly,
             typeof(IStreamHandler<,>),
             (s, topicPattern, interfaceType, handlerType, _) =>
             {
-                var key = $"{handlerType}";
-
-                var genericArgs = interfaceType.GenericTypeArguments;
-                s.AddTransientTopicStreamHandler(
+                s.AddService(
+                    interfaceType,
+                    handlerType,
+                    interfaceType.GenericTypeArguments[0],
+                    interfaceType.GenericTypeArguments[1],
+                    NoopEnveloper.Instance,
                     topicPattern,
-                    key,
-                    genericArgs[0],
-                    genericArgs[1],
-                    handlerType
+                    $"{handlerType}"
                 );
             });
         
-        ServiceCollection.RegisterServices(
+        serviceRegister.RegisterServices(
             assembly,
             typeof(IStreamDispatchFilter<,>),
             (s, topicPattern, interfaceType, handlerType, scopeType) =>
             {
-                var genericArgs = interfaceType.GenericTypeArguments;
-                s.AddSingletonTopicStreamDispatchFilter(
-                    topicPattern,
-                    genericArgs[0],
-                    genericArgs[1],
-                    handlerType
+                s.AddService(
+                    interfaceType,
+                    handlerType,
+                    interfaceType.GenericTypeArguments[0],
+                    interfaceType.GenericTypeArguments[1],
+                    StreamDispatchEnveloper.Instance,
+                    topicPattern
                 );
             });
         
-        ServiceCollection.RegisterServices(
+        serviceRegister.RegisterServices(
             assembly,
             typeof(IStreamHandlingFilter<,>),
             (s, topicPattern, interfaceType, handlerType, scopeType) =>
             {
-                var genericArgs = interfaceType.GenericTypeArguments;
-                s.AddKeyedTransientTopicStreamHandlingFilter(
+                s.AddService(
+                    interfaceType,
+                    handlerType,
+                    interfaceType.GenericTypeArguments[0],
+                    interfaceType.GenericTypeArguments[1],
+                    StreamHandlingEnveloper.Instance,
                     topicPattern,
                     scopeType != null
                         ? $"{scopeType}"
-                        : "global",
-                    genericArgs[0],
-                    genericArgs[1],
-                    handlerType
+                        : "global"
                 );
             });
         
-        ServiceCollection.RegisterServices(
+        serviceRegister.RegisterServices(
             assembly,
             typeof(IStreamExceptionHandler<,,>),
             (s, topicPattern, interfaceType, handlerType, scopeType) =>
             {
-                var genericArgs = interfaceType.GenericTypeArguments;
-                s.AddKeyedTransientTopicStreamExceptionHandler(
+                s.AddService(
+                    interfaceType,
+                    handlerType,
+                    interfaceType.GenericTypeArguments[0],
+                    interfaceType.GenericTypeArguments[1],
+                    StreamHandlingEnveloper.Instance,
                     topicPattern,
                     scopeType != null
                         ? $"{scopeType}"
-                        : "global",
-                    genericArgs[0],
-                    genericArgs[1],
-                    genericArgs[2],
-                    handlerType
+                        : "global"
                 );
             });
 
         return this;
     }
 
-    public IMessageHandlerBuilder<TMessage> AddMessageHandler<TMessage, THandler>(string topicPattern, Func<IServiceProvider, IMessageContext<TMessage>, THandler>? handlerFactory = null)
+    public IMessageHandlerBuilder<TMessage> AddMessageHandler<TMessage, THandler>(string topicPattern, Func<IMessageContext<TMessage>, THandler>? handlerFactory = null)
         where THandler : class, IMessageHandler<TMessage>
     {
         if (!topicPattern.IsValidTopicPattern(out var errorMessage))
@@ -229,24 +239,12 @@ internal class LevadSBuilder(IServiceCollection serviceCollection) : ILevadSBuil
             throw new ArgumentException(errorMessage, nameof(topicPattern));
         }
 
-        var key = $"{typeof(THandler)}";
+        var key = Guid.NewGuid().ToString();
     
-        var descriptors = ServiceCollection.AddTransientTopicMessageHandler<TMessage, THandler>(
-            topicPattern,
-            key,
-            h => handlerFactory?.Invoke(
-                h.ServiceProvider,
-                (MessageContext<TMessage>)h.Context!
-            ) ?? h.ServiceProvider.CreateInstanceWithTopic<THandler>(h.Context!)
-        );
-        
-        return CreateMessageHandlerBuilder<TMessage>(key, descriptors);
+        return new MessageHandlerBuilder<TMessage>(this, serviceRegister, key, serviceRegister.AddMessageHandler<TMessage, THandler>(topicPattern, handlerFactory, key));
     }
 
-    protected virtual IMessageHandlerBuilder<TMessage> CreateMessageHandlerBuilder<TMessage>(string key, IEnumerable<ServiceDescriptor> serviceDescriptors)
-        => new MessageHandlerBuilder<TMessage>(this, serviceCollection, key);
-
-    public IRequestHandlerBuilder<TRequest, TResponse> AddRequestHandler<TRequest, TResponse, THandler>(string topicPattern, Func<IServiceProvider, IRequestContext<TRequest>, THandler>? handlerFactory = null)
+    public IRequestHandlerBuilder<TRequest, TResponse> AddRequestHandler<TRequest, TResponse, THandler>(string topicPattern, Func<IRequestContext<TRequest>, THandler>? handlerFactory = null)
         where THandler : class, IRequestHandler<TRequest, TResponse>
     {
         if (!topicPattern.IsValidTopicPattern(out var errorMessage))
@@ -254,24 +252,12 @@ internal class LevadSBuilder(IServiceCollection serviceCollection) : ILevadSBuil
             throw new ArgumentException(errorMessage, nameof(topicPattern));
         }
 
-        var key = $"{typeof(THandler)}";
-    
-        var descriptors = ServiceCollection.AddTransientTopicRequestHandler<TRequest, TResponse, THandler>(
-            topicPattern,
-            key,
-            h => handlerFactory?.Invoke(
-                h.ServiceProvider,
-                (RequestContext<TRequest>)h.Context!
-            ) ?? h.ServiceProvider.CreateInstanceWithTopic<THandler>(h.Context!)
-        );
+        var key = Guid.NewGuid().ToString();
         
-        return CreateRequestHandlerBuilder<TRequest, TResponse>(key, descriptors);
+        return new RequestHandlerBuilder<TRequest, TResponse>(this, serviceRegister, key, serviceRegister.AddRequestHandler<TRequest, TResponse, THandler>(topicPattern, handlerFactory, key));
     }
-
-    protected virtual IRequestHandlerBuilder<TRequest, TResponse> CreateRequestHandlerBuilder<TRequest, TResponse>(string key, IEnumerable<ServiceDescriptor> serviceDescriptors)
-        => new RequestHandlerBuilder<TRequest, TResponse>(this, serviceCollection, key);
-
-    public IStreamHandlerBuilder<TRequest, TResponse> AddStreamHandler<TRequest, TResponse, THandler>(string topicPattern, Func<IServiceProvider, IStreamContext<TRequest>, THandler>? handlerFactory = null)
+    
+    public IStreamHandlerBuilder<TRequest, TResponse> AddStreamHandler<TRequest, TResponse, THandler>(string topicPattern, Func<IStreamContext<TRequest>, THandler>? handlerFactory = null)
         where THandler : class, IStreamHandler<TRequest, TResponse>
     {
         if (!topicPattern.IsValidTopicPattern(out var errorMessage))
@@ -279,160 +265,218 @@ internal class LevadSBuilder(IServiceCollection serviceCollection) : ILevadSBuil
             throw new ArgumentException(errorMessage, nameof(topicPattern));
         }
 
-        var key = $"{typeof(THandler)}";
-
-        var descriptors = ServiceCollection.AddTransientTopicStreamHandler<TRequest, TResponse, THandler>(
-            topicPattern,
-            key,
-            h => handlerFactory?.Invoke(
-                h.ServiceProvider,
-                (StreamContext<TRequest>)h.Context!
-            ) ?? h.ServiceProvider.CreateInstanceWithTopic<THandler>(h.Context!)
-        );
+        var key = Guid.NewGuid().ToString();
         
-        return CreateStreamHandlerBuilder<TRequest, TResponse>(key, descriptors);
+        return new StreamHandlerBuilder<TRequest, TResponse>(this, serviceRegister, key, serviceRegister.AddStreamHandler<TRequest, TResponse, THandler>(topicPattern, handlerFactory, key));
     }
 
-    protected virtual IStreamHandlerBuilder<TRequest, TResponse> CreateStreamHandlerBuilder<TRequest, TResponse>(string key, IEnumerable<ServiceDescriptor> serviceDescriptors)
-        => new StreamHandlerBuilder<TRequest, TResponse>(this, serviceCollection, key);
-
-    public ILevadSBuilder AddMessageFilter<TMessage, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory)
+    public ILevadSBuilder AddMessageFilter<TMessage, TFilter>(string topicPattern, Func<IMessageContext<TMessage>, TFilter>? filterFactory)
         where TFilter : class, IMessageHandlingFilter<TMessage>
     {
-        filterFactory ??= serviceProvider => ActivatorUtilities.CreateInstance<TFilter>(serviceProvider);
-
-        serviceCollection.AddKeyedTransientTopicMessageHandlingFilter<TMessage, TFilter>(topicPattern, "global", h => filterFactory(h.ServiceProvider));
+        serviceRegister.AddMessageHandlingFilter<TMessage, TFilter>(topicPattern, filterFactory, "global");
 
         return this;
     }
 
-    public ILevadSBuilder AddRequestFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory)
+    public ILevadSBuilder AddRequestFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IRequestContext<TRequest>, TFilter>? filterFactory)
         where TFilter : class, IRequestHandlingFilter<TRequest, TResponse>
     {
-        filterFactory ??= serviceProvider => ActivatorUtilities.CreateInstance<TFilter>(serviceProvider);
-        
-        serviceCollection.AddKeyedTransientTopicRequestHandlingFilter<TRequest, TResponse, TFilter>(topicPattern, "global", h => filterFactory(h.ServiceProvider));
+        serviceRegister.AddRequestHandlingFilter<TRequest, TResponse, TFilter>(topicPattern, filterFactory, "global");
 
         return this;
     }
 
-    public ILevadSBuilder AddRequestFilter<TRequest, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory)
+    IDisposable IRequestFiltersRegister.AddRequestFilter<TRequest, TFilter>(string topicPattern, Func<IRequestContext<TRequest>, TFilter>? filterFactory)
+        =>  serviceRegister.AddRequestHandlingFilter<TRequest, object, TFilter>(topicPattern, filterFactory, "global");
+
+    IDisposable IRequestFiltersRegister.AddRequestFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IRequestContext<TRequest>, TFilter>? filterFactory)
+        =>  serviceRegister.AddRequestHandlingFilter<TRequest, TResponse, TFilter>(topicPattern, filterFactory, "global");
+
+    public ILevadSBuilder AddRequestFilter<TRequest, TFilter>(string topicPattern, Func<IRequestContext<TRequest>, TFilter>? filterFactory)
         where TFilter : class, IRequestHandlingFilter<TRequest>
     {
-        filterFactory ??= serviceProvider => ActivatorUtilities.CreateInstance<TFilter>(serviceProvider);
-        
-        serviceCollection.AddKeyedTransientTopicRequestHandlingFilter<TRequest, object, TFilter>(topicPattern, "global", h => filterFactory(h.ServiceProvider));
+        serviceRegister.AddRequestHandlingFilter<TRequest, object, TFilter>(topicPattern, filterFactory, "global");
 
         return this;
     }
 
-    public ILevadSBuilder AddStreamFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory)  where TFilter : class, IStreamHandlingFilter<TRequest, TResponse>
+    public ILevadSBuilder AddStreamFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IStreamContext<TRequest>, TFilter>? filterFactory)
+        where TFilter : class, IStreamHandlingFilter<TRequest, TResponse>
     {
-        filterFactory ??= serviceProvider => ActivatorUtilities.CreateInstance<TFilter>(serviceProvider);
-
-        serviceCollection.AddKeyedTransientTopicStreamHandlingFilter<TRequest, TResponse, TFilter>(topicPattern, "global", h => filterFactory(h.ServiceProvider));
+        serviceRegister.AddStreamHandlingFilter<TRequest, TResponse, TFilter>(topicPattern, filterFactory, "global");
 
         return this;
     }
 
-    public ILevadSBuilder AddStreamFilter<TRequest, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory)
+    IDisposable IStreamFiltersRegister.AddStreamFilter<TRequest, TFilter>(string topicPattern, Func<IStreamContext<TRequest>, TFilter>? filterFactory)
+        => serviceRegister.AddStreamHandlingFilter<TRequest, object, TFilter>(topicPattern, filterFactory, "global");
+
+    IDisposable IStreamFiltersRegister.AddStreamFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IStreamContext<TRequest>, TFilter>? filterFactory)
+        => serviceRegister.AddStreamHandlingFilter<TRequest, TResponse, TFilter>(topicPattern, filterFactory, "global");
+
+    public ILevadSBuilder AddStreamFilter<TRequest, TFilter>(string topicPattern, Func<IStreamContext<TRequest>, TFilter>? filterFactory)
         where TFilter : class, IStreamHandlingFilter<TRequest>
     {
-        filterFactory ??= serviceProvider => ActivatorUtilities.CreateInstance<TFilter>(serviceProvider);
-
-        serviceCollection.AddKeyedTransientTopicStreamHandlingFilter<TRequest, object, TFilter>(topicPattern, "global", h => filterFactory(h.ServiceProvider));
+        serviceRegister.AddStreamHandlingFilter<TRequest, object, TFilter>(topicPattern, filterFactory, "global");
 
         return this;
     }
 
-    public ILevadSBuilder AddMessageDispatchFilter<TMessage, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory = null)
+    public ILevadSBuilder AddMessageDispatchFilter<TMessage, TFilter>(string topicPattern, Func<IMessageContext<TMessage>, TFilter>? filterFactory = null)
         where TFilter : class, IMessageDispatchFilter<TMessage>
     {
-        filterFactory ??= serviceProvider => ActivatorUtilities.CreateInstance<TFilter>(serviceProvider);
-        
-        ServiceCollection.AddSingletonTopicMessageDispatchFilter<TMessage, TFilter>(topicPattern, filterFactory);
+        serviceRegister.AddMessageDispatchFilter<TMessage, TFilter>(topicPattern, filterFactory);
 
         return this;
     }
 
-    public ILevadSBuilder AddRequestDispatchFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory = null)
+    public ILevadSBuilder AddRequestDispatchFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IRequestContext<TRequest>, TFilter>? filterFactory = null)
         where TFilter : class, IRequestDispatchFilter<TRequest, TResponse>
     {
-        filterFactory ??= serviceProvider => ActivatorUtilities.CreateInstance<TFilter>(serviceProvider);
-
-        ServiceCollection.AddSingletonTopicRequestDispatchFilter<TRequest, TResponse, TFilter>(topicPattern, filterFactory);
+        serviceRegister.AddRequestDispatchFilter<TRequest, TResponse, TFilter>(topicPattern, filterFactory);
 
         return this;
     }
 
-    public ILevadSBuilder AddRequestDispatchFilter<TRequest, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory = null)
+    IDisposable IRequestDispatchFiltersRegister.AddRequestDispatchFilter<TRequest, TFilter>(string topicPattern, Func<IRequestContext<TRequest>, TFilter>? filterFactory)
+        => serviceRegister.AddRequestDispatchFilter<TRequest, object, TFilter>(topicPattern, filterFactory);
+
+    IDisposable IRequestDispatchFiltersRegister.AddRequestDispatchFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IRequestContext<TRequest>, TFilter>? filterFactory)
+        => serviceRegister.AddRequestDispatchFilter<TRequest, TResponse, TFilter>(topicPattern, filterFactory);
+
+    public ILevadSBuilder AddRequestDispatchFilter<TRequest, TFilter>(string topicPattern, Func<IRequestContext<TRequest>, TFilter>? filterFactory = null)
         where TFilter : class, IRequestDispatchFilter<TRequest>
     {
-        filterFactory ??= serviceProvider => ActivatorUtilities.CreateInstance<TFilter>(serviceProvider);
-        
-        serviceCollection.AddSingletonTopicRequestDispatchFilter<TRequest, object, TFilter>(topicPattern, filterFactory);
+        serviceRegister.AddRequestDispatchFilter<TRequest, object, TFilter>(topicPattern, filterFactory);
 
         return this;
     }
 
-    public ILevadSBuilder AddStreamDispatchFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory = null)
+    public ILevadSBuilder AddStreamDispatchFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IStreamContext<TRequest>, TFilter>? filterFactory = null)
         where TFilter : class, IStreamDispatchFilter<TRequest, TResponse>
     {
-        filterFactory ??= serviceProvider => ActivatorUtilities.CreateInstance<TFilter>(serviceProvider);
-
-        ServiceCollection.AddSingletonTopicStreamDispatchFilter<TRequest, TResponse, TFilter>(topicPattern, filterFactory);
+        serviceRegister.AddStreamDispatchFilter<TRequest, TResponse, TFilter>(topicPattern, filterFactory);
         
         return this;
     }
 
-    public ILevadSBuilder AddStreamDispatchFilter<TRequest, TFilter>(string topicPattern, Func<IServiceProvider, TFilter>? filterFactory = null) where TFilter : class, IStreamDispatchFilter<TRequest>
+    IDisposable IStreamDispatchFiltersRegister.AddStreamDispatchFilter<TRequest, TFilter>(string topicPattern, Func<IStreamContext<TRequest>, TFilter>? filterFactory)
+        => serviceRegister.AddStreamDispatchFilter<TRequest, object, TFilter>(topicPattern, filterFactory);
+
+    IDisposable IStreamDispatchFiltersRegister.AddStreamDispatchFilter<TRequest, TResponse, TFilter>(string topicPattern, Func<IStreamContext<TRequest>, TFilter>? filterFactory)
+        => serviceRegister.AddStreamDispatchFilter<TRequest, TResponse, TFilter>(topicPattern, filterFactory);
+
+    public ILevadSBuilder AddStreamDispatchFilter<TRequest, TFilter>(string topicPattern, Func<IStreamContext<TRequest>, TFilter>? filterFactory = null)
+        where TFilter : class, IStreamDispatchFilter<TRequest>
     {
-        filterFactory ??= serviceProvider => ActivatorUtilities.CreateInstance<TFilter>(serviceProvider);
-        
-        serviceCollection.AddSingletonTopicStreamDispatchFilter<TRequest, object, TFilter>(topicPattern, filterFactory);
+        serviceRegister.AddStreamDispatchFilter<TRequest, object, TFilter>(topicPattern, filterFactory);
 
         return this;
     }
 
-    public ILevadSBuilder AddLevada<TLevada>(string levadaName, Action<ILevadaBuilder<TLevada>> builderAction)
-        where TLevada : ILevada
+    // public ILevadSBuilder AddLevada<TLevada>(string levadaName, Action<ILevadaBuilder<TLevada>> builderAction)
+    //     where TLevada : ILevada
+    // {
+    //     serviceRegister.AddKeyedSingleton<ILevadaService>(levadaName, (serviceProvider, _) =>
+    //     {
+    //         var levada = ActivatorUtilities.CreateInstance<TLevada>(serviceProvider);
+    //         var builder = new LevadaBuilder<TLevada>();
+    //         builderAction(builder);
+    //         
+    //         return new LevadaWrapper<TLevada>(serviceProvider, levada, builder);
+    //     });
+    //     
+    //     return this;
+    // }
+
+    IDisposableMessageHandlerBuilder<TMessage> IMessageHandlersRegister.AddMessageHandler<TMessage, THandler>(string topicPattern, Func<IMessageContext<TMessage>, THandler>? handlerFactory)
     {
-        ServiceCollection.AddKeyedSingleton<ILevadaService>(levadaName, (serviceProvider, _) =>
+        if (!topicPattern.IsValidTopicPattern(out var errorMessage))
         {
-            var levada = ActivatorUtilities.CreateInstance<TLevada>(serviceProvider);
-            var builder = new LevadaBuilder<TLevada>();
-            builderAction(builder);
-            
-            return new LevadaWrapper<TLevada>(serviceProvider, levada, builder);
-        });
-        
-        return this;
+            throw new ArgumentException(errorMessage, nameof(topicPattern));
+        }
+
+        var key = Guid.NewGuid().ToString();
+    
+        return new MessageHandlerBuilder<TMessage>(this, serviceRegister, key, registrationAction: () => serviceRegister.AddMessageHandler<TMessage, THandler>(topicPattern, handlerFactory, key));
     }
 
-    public ILevadSBuilder WarmUpMessageHandling<TMessage>()
+    IDisposableRequestHandlerBuilder<TRequest, TResponse> IRequestHandlersRegister.AddRequestHandler<TRequest, TResponse, THandler>(string topicPattern, Func<IRequestContext<TRequest>, THandler>? handlerFactory)
     {
-        ServiceProviderExtensions.GetVariantMessageServiceTypes<TMessage, ITopicMessageDispatchFilter<TMessage>>();
-        ServiceProviderExtensions.GetVariantMessageServiceTypes<TMessage, ITopicMessageHandler<TMessage>>();
-        ServiceProviderExtensions.GetVariantMessageServiceTypes<TMessage, ITopicMessageHandlingFilter<TMessage>>();
+        if (!topicPattern.IsValidTopicPattern(out var errorMessage))
+        {
+            throw new ArgumentException(errorMessage, nameof(topicPattern));
+        }
+
+        var key = Guid.NewGuid().ToString();
         
-        return this;
+        return new RequestHandlerBuilder<TRequest, TResponse>(this, serviceRegister, key, registrationAction: () => serviceRegister.AddRequestHandler<TRequest, TResponse, THandler>(topicPattern, handlerFactory, key));
     }
 
-    public ILevadSBuilder WarmUpRequestHandling<TRequest, TResponse>() 
+    IDisposableStreamHandlerBuilder<TRequest, TResponse> IStreamHandlersRegister.AddStreamHandler<TRequest, TResponse, THandler>(string topicPattern, Func<IStreamContext<TRequest>, THandler>? handlerFactory)
     {
-        ServiceProviderExtensions.GetVariantRequestServiceTypes<TRequest, TResponse, ITopicRequestDispatchFilter<TRequest, TResponse>>();
-        ServiceProviderExtensions.GetVariantRequestServiceTypes<TRequest, TResponse, ITopicRequestHandler<TRequest, TResponse>>();
-        ServiceProviderExtensions.GetVariantRequestServiceTypes<TRequest, TResponse, ITopicRequestHandlingFilter<TRequest, TResponse>>();
+        if (!topicPattern.IsValidTopicPattern(out var errorMessage))
+        {
+            throw new ArgumentException(errorMessage, nameof(topicPattern));
+        }
 
-        return this;
+        var key = Guid.NewGuid().ToString();
+        
+        return new StreamHandlerBuilder<TRequest, TResponse>(this, serviceRegister, key, registrationAction: () => serviceRegister.AddStreamHandler<TRequest, TResponse, THandler>(topicPattern, handlerFactory, key));
     }
 
-    public ILevadSBuilder WarmUpStreamHandling<TRequest, TResponse>() 
+    IDisposable IMessageFiltersRegister.AddMessageFilter<TMessage, TFilter>(string topicPattern, Func<IMessageContext<TMessage>, TFilter>? filterFactory)
+        => serviceRegister.AddMessageHandlingFilter<TMessage, TFilter>(topicPattern, filterFactory, "global");
+
+    IDisposable IMessageDispatchFiltersRegister.AddMessageDispatchFilter<TMessage, TFilter>(string topicPattern,
+        Func<IMessageContext<TMessage>, TFilter>? filterFactory)
+        => serviceRegister.AddMessageDispatchFilter(topicPattern, filterFactory);
+
+    public IDisposable AddMessageExceptionHandler<TMessage, TException>(string topicPattern,
+        MessageExceptionHandlerDelegate<TMessage, TException> exceptionHandlerDelegate) where TException : Exception
     {
-        ServiceProviderExtensions.GetVariantRequestServiceTypes<TRequest, TResponse, ITopicStreamDispatchFilter<TRequest, TResponse>>();
-        ServiceProviderExtensions.GetVariantRequestServiceTypes<TRequest, TResponse, ITopicStreamHandler<TRequest, TResponse>>();
-        ServiceProviderExtensions.GetVariantRequestServiceTypes<TRequest, TResponse, ITopicStreamHandlingFilter<TRequest, TResponse>>();
-        
-        return this;
+        throw new NotImplementedException();
+    }
+
+    public IDisposable AddMessageExceptionHandler<TMessage, TException, TExceptionHandler>(string topicPattern,
+        Func<IMessageExceptionContext<TMessage, TException>, TExceptionHandler>? exceptionHandlerFactory = null) where TException : Exception where TExceptionHandler : class, IMessageExceptionHandler<TMessage, TException>
+    {
+        throw new NotImplementedException();
+    }
+
+    public IDisposable AddRequestExceptionHandler<TRequest, TResponse, TException>(string topicPattern,
+        RequestExceptionHandlerDelegate<TRequest, TResponse, TException> exceptionHandlerDelegate) where TException : Exception
+    {
+        throw new NotImplementedException();
+    }
+
+    public IDisposable AddRequestExceptionHandler<TRequest, TResponse, TException, TExceptionHandler>(string topicPattern,
+        Func<IRequestExceptionContext<TRequest, TException>, TExceptionHandler>? exceptionHandlerFactory = null) where TException : Exception where TExceptionHandler : class, IRequestExceptionHandler<TRequest, TResponse, TException>
+    {
+        throw new NotImplementedException();
+    }
+
+    public IDisposable AddRequestExceptionHandler<TRequest, TException, TExceptionHandler>(string topicPattern,
+        Func<IRequestExceptionContext<TRequest, TException>, TExceptionHandler>? exceptionHandlerFactory = null) where TException : Exception where TExceptionHandler : class, IRequestExceptionHandler<TRequest, TException>
+    {
+        throw new NotImplementedException();
+    }
+
+    public IDisposable AddStreamExceptionHandler<TRequest, TResponse, TException>(string topicPattern,
+        StreamExceptionHandlerDelegate<TRequest, TResponse, TException> exceptionHandlerDelegate) where TException : Exception
+    {
+        throw new NotImplementedException();
+    }
+
+    public IDisposable AddStreamExceptionHandler<TRequest, TResponse, TException, TExceptionHandler>(string topicPattern,
+        Func<IStreamExceptionContext<TRequest, TException>, TExceptionHandler>? exceptionHandlerFactory = null) where TException : Exception where TExceptionHandler : class, IStreamExceptionHandler<TRequest, TResponse, TException>
+    {
+        throw new NotImplementedException();
+    }
+
+    public IDisposable AddStreamExceptionHandler<TRequest, TException, TExceptionHandler>(string topicPattern,
+        Func<IStreamExceptionContext<TRequest, TException>, TExceptionHandler>? exceptionHandlerFactory = null) where TException : Exception where TExceptionHandler : class, IStreamExceptionHandler<TRequest, TException>
+    {
+        throw new NotImplementedException();
     }
 }

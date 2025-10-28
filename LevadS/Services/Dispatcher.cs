@@ -1,6 +1,4 @@
 using System.Reflection;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using LevadS.Enums;
 using LevadS.Classes;
 using LevadS.Delegates;
@@ -11,79 +9,54 @@ using LevadS.Classes.Extensions;
 
 namespace LevadS.Services;
 
-internal class Dispatcher : IDispatcher, IServiceManager
+internal class Dispatcher : IDispatcher
 {
-    public Dispatcher(IServiceCollection serviceCollection, IServiceProvider serviceProvider)
+    private readonly IServiceResolver ServiceResolver;
+    public Dispatcher(IServiceProvider serviceProvider, IServiceResolver serviceResolver)
     {
-        ServiceCollection = serviceCollection.Clone();
-        ServiceCollection.RemoveAll<IDispatcher>();
-        ServiceCollection.AddSingleton<IDispatcher>(this);
-        ServiceProvider = serviceProvider;
-    }
-    
-    private readonly object _lock = new();
-    public IServiceCollection ServiceCollection { get; }
-    private IServiceProvider ServiceProvider { get; set; }
-
-    public void UpdateServices(IServiceCollection newServiceCollection)
-    {
-        lock (_lock)
-        {
-            ServiceCollection.Add(newServiceCollection.Except(ServiceCollection));
-            ServiceProvider = ServiceCollection.BuildServiceProvider();
-        }
-    }
-    
-    public void RemoveServices(IEnumerable<ServiceDescriptor> serviceDescriptors)
-    {
-        lock (_lock)
-        {
-            foreach (var serviceDescriptor in serviceDescriptors)
-            {
-                ServiceCollection.Remove(serviceDescriptor);
-            }
-            
-            ServiceProvider = ServiceCollection.BuildServiceProvider();
-        }
+        ((ServiceContainer)serviceResolver).ServiceProvider = serviceProvider;
+        ServiceResolver = serviceResolver;
     }
     
     private Task InternalUnicastAsync<TMessage>(TMessage message, string topic = "*", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
     {
-        var context = new MessageContext<TMessage>(ServiceProvider)
+        var context = new MessageContext<TMessage>(ServiceResolver.ServiceProvider)
         {
             Message = message,
             Topic = topic,
             Headers = headers ?? [],
             DispatchType = DispatchType.Send,
             CancellationToken = cancellationToken ?? CancellationToken.None,
-            ServiceProvider = ServiceProvider
+            ServiceProvider = ServiceResolver.ServiceProvider
         };
 
-        return InternalDispatchMessage(context, async () =>
+        return InternalDispatchMessageAsync(context, async () =>
         {
-            var messageHandler = ServiceProvider.GetTopicMessageHandler(context);
-            if (messageHandler != null)
+            var messageHandler = ServiceResolver.GetMessageHandler(context);
+            if (messageHandler is not { Service: not null })
             {
-                await InternalHandleMessageAsync(messageHandler);
+                throw new InvalidOperationException($"No handler found for {typeof(TMessage).Name}");
             }
+
+            await InternalHandleMessageAsync(messageHandler.Value.Service, messageHandler.Value.Context, messageHandler.Value.Context.CancellationToken);
         }, context.CancellationToken);
     }
     
     private Task InternalMulticastAsync<TMessage>(TMessage message, string topic = "*", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
     {
-        var context = new MessageContext<TMessage>(ServiceProvider)
+        var context = new MessageContext<TMessage>(ServiceResolver.ServiceProvider)
         {
             Message = message,
             Topic = topic,
             Headers = headers ?? [],
             DispatchType = DispatchType.Publish,
             CancellationToken = cancellationToken ?? CancellationToken.None,
-            ServiceProvider = ServiceProvider
+            ServiceProvider = ServiceResolver.ServiceProvider
         };
 
-        return InternalDispatchMessage(context, async () =>
+        return InternalDispatchMessageAsync(context, async () =>
         {
-            var handlers = ServiceProvider.GetTopicMessageHandlers(context);
+            var handlers = ServiceResolver.GetMessageHandlers(context);
             foreach (var handler in handlers)
             {
                 if (context.CancellationToken.IsCancellationRequested)
@@ -91,31 +64,26 @@ internal class Dispatcher : IDispatcher, IServiceManager
                     break;
                 }
                 
-                await InternalHandleMessageAsync(handler, cancellationToken);
+                await InternalHandleMessageAsync(handler.Service, handler.Context, cancellationToken);
             }
         });
     }
 
-    private async Task InternalDispatchMessage<TMessage>(MessageContext<TMessage> context, MessageHandlingFilterNextDelegate handler, CancellationToken? cancellationToken = null)
+    private Task InternalDispatchMessageAsync<TMessage>(MessageContext<TMessage> context, MessageHandlingFilterNextDelegate handler, CancellationToken? cancellationToken = null)
     {
-        var filters = ServiceProvider.GetTopicMessageDispatchFilters(context).ToList();
+        var filters = ServiceResolver.GetMessageDispatchFilters(context).ToList();
         using var enumerator = filters.GetEnumerator();
         MessageDispatchFilterNextDelegate callback = null!;
         callback = async (topic, headers) =>
         {
-            if (enumerator.MoveNext() && enumerator.Current != null)
+            if (context.CancellationToken.IsCancellationRequested)
             {
-                var dispatchContext = new MessageContext<TMessage>(ServiceProvider)
-                {
-                    Message = context.Message,
-                    Topic = topic ?? context.Topic,
-                    Headers = new Dictionary<string, object>(headers ?? context.Headers),
-                    DispatchType = context.DispatchType,
-                    CapturedTopicValues = enumerator.Current.Context!.CapturedTopicValues,
-                    CancellationToken = cancellationToken ?? CancellationToken.None
-                };
-                
-                await enumerator.Current.InvokeAsync(dispatchContext, callback);
+                return;
+            }
+            
+            if (enumerator.MoveNext() && enumerator.Current.Service != null)
+            {
+                await enumerator.Current.Service.InvokeAsync(enumerator.Current.Context, callback);
             }
             else
             {
@@ -126,69 +94,44 @@ internal class Dispatcher : IDispatcher, IServiceManager
             }
         };
 
-        await callback(context.Topic, context.Headers);
+        return callback(context.Topic, context.Headers);
     }
 
-    private async Task InternalHandleMessageAsync<TMessage>(ITopicMessageHandler<TMessage> messageHandler, CancellationToken? cancellationToken = null)
+    private Task InternalHandleMessageAsync<TMessage>(IMessageHandler<TMessage> messageHandler, IMessageContext<TMessage> context, CancellationToken? cancellationToken = null)
     {
-        var filters = ServiceProvider.GetTopicMessageHandlingFilters((MessageContext<TMessage>)messageHandler.Context!, messageHandler.Key).ToList();
+        var filters = ServiceResolver.GetMessageHandlingFilters(context, ((Context)context).Key!).ToList();
         using var enumerator = filters.GetEnumerator();
         MessageHandlingFilterNextDelegate callback = null!;
         callback = async () =>
         {
-            if (enumerator.MoveNext() && enumerator.Current != null)
+            if (context.CancellationToken.IsCancellationRequested)
             {
-                var context = new MessageContext<TMessage>(ServiceProvider)
-                {
-                    Message = ((MessageContext<TMessage>)messageHandler.Context!).Message,
-                    Topic = messageHandler.Context.Topic,
-                    Headers = new Dictionary<string, object>(messageHandler.Context.Headers),
-                    DispatchType = messageHandler.Context.DispatchType,
-                    CapturedTopicValues = enumerator.Current.Context!.CapturedTopicValues,
-                    CancellationToken = cancellationToken ?? CancellationToken.None
-                };
+                return;
+            }
 
-                await enumerator.Current.InvokeAsync(context, callback);
+            if (enumerator.MoveNext() && enumerator.Current.Service != null)
+            {
+                await enumerator.Current.Service.InvokeAsync(enumerator.Current.Context, callback);
             }
             else
             {
-                var context = new MessageContext<TMessage>(ServiceProvider)
-                {
-                    Message = ((MessageContext<TMessage>)messageHandler.Context!).Message,
-                    Topic = messageHandler.Context.Topic,
-                    Headers = new Dictionary<string, object>(messageHandler.Context.Headers),
-                    DispatchType = messageHandler.Context.DispatchType,
-                    CapturedTopicValues = new Dictionary<string, object>(messageHandler.Context!.CapturedTopicValues),
-                    CancellationToken = cancellationToken ?? CancellationToken.None
-                };
-
                 await messageHandler.HandleAsync(context);
             }
         };
-
-        await callback();
+        
+        return callback();
     }
 
-    private Task<TResponse> InternalDispatchRequest<TRequest, TResponse>(RequestContext<TRequest> context, RequestHandlingFilterNextDelegate<TResponse> handler, CancellationToken? cancellationToken = null)
+    private Task<TResponse> InternalDispatchRequestAsync<TRequest, TResponse>(RequestContext<TRequest> context, RequestHandlingFilterNextDelegate<TResponse> handler, CancellationToken? cancellationToken = null)
     {
-        var filters = ServiceProvider.GetTopicRequestDispatchFilters<TRequest, TResponse>(context).ToList();
+        var filters = ServiceResolver.GetRequestDispatchFilters<TRequest, TResponse>(context).ToList();
         using var enumerator = filters.GetEnumerator();
         RequestDispatchFilterNextDelegate<TResponse> callback = null!;
         callback = (topic, headers) =>
         {
-            if (enumerator.MoveNext() && enumerator.Current != null)
+            if (enumerator.MoveNext() && enumerator.Current.Service != null)
             {
-                var dispatchContext = new RequestContext<TRequest>(ServiceProvider)
-                {
-                    Request = context.Request,
-                    Topic = topic ?? context.Topic,
-                    Headers = new Dictionary<string, object>(headers ?? context.Headers),
-                    DispatchType = context.DispatchType,
-                    CapturedTopicValues = enumerator.Current.Context!.CapturedTopicValues,
-                    CancellationToken = cancellationToken ?? CancellationToken.None
-                };
-
-                return enumerator.Current.InvokeAsync(dispatchContext, callback);
+                return enumerator.Current.Service.InvokeAsync(enumerator.Current.Context, callback);
             }
             
             context.Topic = topic ?? context.Topic;
@@ -203,24 +146,14 @@ internal class Dispatcher : IDispatcher, IServiceManager
     private async IAsyncEnumerable<TResponse> InternalDispatchStream<TRequest, TResponse>(StreamContext<TRequest> context,
         StreamHandlingFilterNextDelegate<TResponse> handler, CancellationToken? cancellationToken)
     {
-        var filters = ServiceProvider.GetTopicStreamDispatchFilters<TRequest, TResponse>(context).ToList();
+        var filters = ServiceResolver.GetStreamDispatchFilters<TRequest, TResponse>(context).ToList();
         using var enumerator = filters.GetEnumerator();
         StreamDispatchFilterNextDelegate<TResponse> callback = null!;
         callback = (topic, headers) =>
         {
-            if (enumerator.MoveNext() && enumerator.Current != null)
+            if (enumerator.MoveNext() && enumerator.Current.Service != null)
             {
-                var dispatchContext = new StreamContext<TRequest>(ServiceProvider)
-                {
-                    Request = context.Request,
-                    Topic = topic ?? context.Topic,
-                    Headers = new Dictionary<string, object>(headers ?? context.Headers),
-                    DispatchType = context.DispatchType,
-                    CapturedTopicValues = enumerator.Current.Context!.CapturedTopicValues,
-                    CancellationToken = cancellationToken ?? CancellationToken.None
-                };
-                
-                return enumerator.Current.InvokeAsync(dispatchContext, callback);
+                return enumerator.Current.Service.InvokeAsync(enumerator.Current.Context, callback);
             }
             
             context.Topic = topic ?? context.Topic;
@@ -237,22 +170,22 @@ internal class Dispatcher : IDispatcher, IServiceManager
     
     private Task<TResponse> InternalRequestAsync<TRequest, TResponse>(TRequest request, string topic = "*", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
     {
-        var context = new RequestContext<TRequest>(ServiceProvider)
+        var context = new RequestContext<TRequest>(ServiceResolver.ServiceProvider)
         {
             Request = request,
             Topic = topic,
             Headers = headers ?? [],
             DispatchType = DispatchType.Request,
             CancellationToken = cancellationToken ?? CancellationToken.None,
-            ServiceProvider = ServiceProvider
+            ServiceProvider = ServiceResolver.ServiceProvider
         };
 
-        return InternalDispatchRequest(context, async () =>
+        return InternalDispatchRequestAsync<TRequest, TResponse>(context, async () =>
         {
-            var requestHandler = ServiceProvider.GetTopicRequestHandler<TRequest, TResponse>(context);
-            if (requestHandler != null)
+            var requestHandler = ServiceResolver.GetRequestHandler<TRequest, TResponse>(context);
+            if (requestHandler is { Service: not null })
             {
-                return await InternalHandleRequest(requestHandler);
+                return await InternalHandleRequest(requestHandler.Value.Service, requestHandler.Value.Context);
             }
 
             throw new InvalidOperationException($"No handler found for {typeof(TRequest).Name}");
@@ -261,61 +194,41 @@ internal class Dispatcher : IDispatcher, IServiceManager
     
     private IAsyncEnumerable<TResponse> InternalStreamAsync<TRequest, TResponse>(TRequest request, string topic = "*", Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
     {
-        var context = new StreamContext<TRequest>(ServiceProvider)
+        var context = new StreamContext<TRequest>(ServiceResolver.ServiceProvider)
         {
             Request = request,
             Topic = topic,
             Headers = headers ?? [],
             DispatchType = DispatchType.Stream,
             CancellationToken = cancellationToken ?? CancellationToken.None,
-            ServiceProvider = ServiceProvider
+            ServiceProvider = ServiceResolver.ServiceProvider
         };
 
         return InternalDispatchStream(context, () =>
         {
-            var messageHandler = ServiceProvider.GetTopicStreamHandler<TRequest, TResponse>(context);
-            if (messageHandler != null)
+            var messageHandler = ServiceResolver.GetStreamHandler<TRequest, TResponse>(context);
+            if (messageHandler is { Service: not null })
             {
-                return InternalHandleStream(messageHandler);
+                return InternalHandleStream(messageHandler.Value.Service, messageHandler.Value.Context);
             }
 
             throw new InvalidOperationException($"No handler found for {typeof(TRequest).Name}");
         }, context.CancellationToken);
     }
 
-    private async Task<TResponse> InternalHandleRequest<TRequest, TResponse>(ITopicRequestHandler<TRequest, TResponse> requestHandler, CancellationToken? cancellationToken = null)
+    private async Task<TResponse> InternalHandleRequest<TRequest, TResponse>(IRequestHandler<TRequest, TResponse> requestHandler, IRequestContext<TRequest> context, CancellationToken? cancellationToken = null)
     {
-        var filters = ServiceProvider.GetTopicRequestHandlingFilters<TRequest, TResponse>((RequestContext<TRequest>)requestHandler.Context!, requestHandler.Key).ToList();
+        var filters = ServiceResolver.GetRequestHandlingFilters<TRequest, TResponse>(context, ((Context)context).Key!).ToList();
         using var enumerator = filters.GetEnumerator();
         RequestHandlingFilterNextDelegate<TResponse> callback = null!;
         callback = async () =>
         {
-            if (enumerator.MoveNext() && enumerator.Current != null)
+            if (enumerator.MoveNext() && enumerator.Current.Service != null)
             {
-                var context = new RequestContext<TRequest>(ServiceProvider)
-                {
-                    Request = ((RequestContext<TRequest>)requestHandler.Context!).Request,
-                    Topic = requestHandler.Context.Topic,
-                    Headers = new Dictionary<string, object>(requestHandler.Context.Headers),
-                    DispatchType = requestHandler.Context.DispatchType,
-                    CapturedTopicValues = enumerator.Current.Context!.CapturedTopicValues,
-                    CancellationToken = cancellationToken ?? CancellationToken.None
-                };
-
-                return await enumerator.Current.InvokeAsync(context, callback);
+                return await enumerator.Current.Service.InvokeAsync(enumerator.Current.Context, callback);
             }
             else
             {
-                var context = new RequestContext<TRequest>(ServiceProvider)
-                {
-                    Request = ((RequestContext<TRequest>)requestHandler.Context).Request,
-                    Topic = requestHandler.Context.Topic,
-                    Headers = new Dictionary<string, object>(requestHandler.Context.Headers),
-                    DispatchType = requestHandler.Context.DispatchType,
-                    CapturedTopicValues = new Dictionary<string, object>(requestHandler.Context!.CapturedTopicValues),
-                    CancellationToken = cancellationToken ?? CancellationToken.None
-                };
-                    
                 return await requestHandler.HandleAsync(context);
             }
         };
@@ -323,40 +236,20 @@ internal class Dispatcher : IDispatcher, IServiceManager
         return await callback();
     }
 
-    private async IAsyncEnumerable<TResponse> InternalHandleStream<TRequest, TResponse>(ITopicStreamHandler<TRequest, TResponse> streamHandler, CancellationToken? cancellationToken = null)
+    private async IAsyncEnumerable<TResponse> InternalHandleStream<TRequest, TResponse>(IStreamHandler<TRequest, TResponse> streamHandler, IStreamContext<TRequest> context, CancellationToken? cancellationToken = null)
     {
-        var filters = ServiceProvider.GetTopicStreamHandlingFilters<TRequest, TResponse>((StreamContext<TRequest>)streamHandler.Context!, streamHandler.Key).ToList();
+        var filters = ServiceResolver.GetStreamHandlingFilters<TRequest, TResponse>(context, ((Context)context).Key!).ToList();
         using var enumerator = filters.GetEnumerator();
      
         StreamHandlingFilterNextDelegate<TResponse> callback = null!;
         callback = () =>
         {
-            if (enumerator.MoveNext() && enumerator.Current != null)
+            if (enumerator.MoveNext() && enumerator.Current.Service != null)
             {
-                var context = new StreamContext<TRequest>(ServiceProvider)
-                {
-                    Request = ((StreamContext<TRequest>)streamHandler.Context!).Request,
-                    Topic = streamHandler.Context.Topic,
-                    Headers = new Dictionary<string, object>(streamHandler.Context.Headers),
-                    DispatchType = streamHandler.Context.DispatchType,
-                    CapturedTopicValues = enumerator.Current.Context!.CapturedTopicValues,
-                    CancellationToken = cancellationToken ?? CancellationToken.None
-                };
-
-                return enumerator.Current.InvokeAsync(context, callback);
+                return enumerator.Current.Service.InvokeAsync(enumerator.Current.Context, callback);
             }
             else
             {
-                var context = new StreamContext<TRequest>(ServiceProvider)
-                {
-                    Request = ((StreamContext<TRequest>)streamHandler.Context!).Request,
-                    Topic = streamHandler.Context.Topic,
-                    Headers = new Dictionary<string, object>(streamHandler.Context.Headers),
-                    DispatchType = streamHandler.Context.DispatchType,
-                    CapturedTopicValues = new Dictionary<string, object>(streamHandler.Context!.CapturedTopicValues),
-                    CancellationToken = cancellationToken ?? CancellationToken.None
-                };
-
                 return streamHandler.HandleAsync(context, CancellationToken.None);
             }
         };
@@ -378,28 +271,70 @@ internal class Dispatcher : IDispatcher, IServiceManager
 
     public Task<TResponse> RequestAsync<TResponse>(IRequest<TResponse> request, string topic = "*",
         Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
-        => (Task<TResponse>)_internalRequestAsyncMethod
-            .MakeGenericMethod(request.GetType(), typeof(TResponse))
-            .Invoke(this, [request, topic, headers, cancellationToken])!;
+    {
+        try
+        {
+            return (Task<TResponse>)_internalRequestAsyncMethod
+                .MakeGenericMethod(request.GetType(), typeof(TResponse))
+                .Invoke(this, [request, topic, headers, cancellationToken])!;
+        }
+        catch (TargetInvocationException e)
+        {
+            throw e.InnerException!;
+        }
+    }
 
     public Task<TResponse> RequestAsync<TResponse>(object request, string topic = "",
         Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
-        => (Task<TResponse>)_internalRequestAsyncMethod
-            .MakeGenericMethod(request.GetType(), typeof(TResponse))
-            .Invoke(this, [request, topic, headers, cancellationToken])!;
+    {
+        // dynamic requestObject = request as dynamic;
+        // return InternalRequestAsync<dynamic, TResponse>(requestObject, topic, headers, cancellationToken);
+        try
+        {
+            return (Task<TResponse>)_internalRequestAsyncMethod
+                .MakeGenericMethod(request.GetType(), typeof(TResponse))
+                .Invoke(this, [request, topic, headers, cancellationToken])!;
+        }
+        catch (TargetInvocationException e)
+        {
+            throw e.InnerException!;
+        }
+    }
 
     private readonly MethodInfo _internalStreamAsyncMethod = typeof(Dispatcher)
         .GetMethod(nameof(InternalStreamAsync), BindingFlags.Instance | BindingFlags.NonPublic)!;
     
     public IAsyncEnumerable<TResponse> StreamAsync<TResponse>(IRequest<TResponse> request, string topic = "*",
         Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
-        =>  (IAsyncEnumerable<TResponse>)_internalStreamAsyncMethod!
-            .MakeGenericMethod(request.GetType(), typeof(TResponse))
-            .Invoke(this, [request, topic, headers, cancellationToken])!;
+    {
+        // dynamic requestObject = request as dynamic;
+        // return InternalRequestAsync(requestObject, topic, headers, cancellationToken);
+        try
+        {
+            return (IAsyncEnumerable<TResponse>)_internalStreamAsyncMethod!
+                .MakeGenericMethod(request.GetType(), typeof(TResponse))
+                .Invoke(this, [request, topic, headers, cancellationToken])!;
+        }
+        catch (TargetInvocationException e)
+        {
+            throw e.InnerException!;
+        }
+    }
 
     public IAsyncEnumerable<TResponse> StreamAsync<TResponse>(object request, string topic = "",
         Dictionary<string, object>? headers = null, CancellationToken? cancellationToken = null)
-        => (IAsyncEnumerable<TResponse>)_internalStreamAsyncMethod!
-            .MakeGenericMethod(request.GetType(), typeof(TResponse))
-            .Invoke(this, [request, topic, headers, cancellationToken])!;
+    {
+        // dynamic requestObject = request as dynamic;
+        // return InternalStreamAsync(requestObject, topic, headers, cancellationToken);
+        try
+        {
+            return (IAsyncEnumerable<TResponse>)_internalStreamAsyncMethod!
+                .MakeGenericMethod(request.GetType(), typeof(TResponse))
+                .Invoke(this, [request, topic, headers, cancellationToken])!;
+        }
+        catch (TargetInvocationException e)
+        {
+            throw e.InnerException!;
+        }
+    }
 }

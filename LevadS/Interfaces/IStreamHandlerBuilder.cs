@@ -13,11 +13,11 @@ public interface IStreamHandlerBuilder<out TRequest, TResponse> : ILevadSBuilder
         => WithFilter<StreamHandlingFilterWrapper<TRequest, TResponse>>("*", p => new StreamHandlingFilterWrapper<TRequest, TResponse>(filterDelegate));
     
     IStreamHandlerBuilder<TRequest, TResponse> WithFilter<TFilter>(string topicPattern,
-        Func<IServiceProvider, TFilter>? filterFactory = null)
+        Func<IStreamContext<TRequest>, TFilter>? filterFactory = null)
         where TFilter : class, IStreamHandlingFilter<TRequest, TResponse>;
 
     IStreamHandlerBuilder<TRequest, TResponse> WithFilter<TFilter>(
-        Func<IServiceProvider, TFilter>? filterFactory = null)
+        Func<IStreamContext<TRequest>, TFilter>? filterFactory = null)
         where TFilter : class, IStreamHandlingFilter<TRequest, TResponse>
         => WithFilter<TFilter>("*", filterFactory);
     
@@ -32,13 +32,13 @@ public interface IStreamHandlerBuilder<out TRequest, TResponse> : ILevadSBuilder
         => WithExceptionHandler("*", exceptionHandlerDelegate);
     
     IStreamHandlerBuilder<TRequest, TResponse> WithExceptionHandler<TException, TExceptionHandler>(string topicPattern,
-        Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory = null)
+        Func<IStreamExceptionContext<TRequest, TException>, TExceptionHandler>? exceptionHandlerFactory = null)
         where TException : Exception
         where TExceptionHandler : class, IStreamExceptionHandler<TRequest, TResponse, TException>
-        => WithFilter<StreamExceptionHandlerWrapper<TRequest, TResponse, TException, TExceptionHandler>>(topicPattern, p => new StreamExceptionHandlerWrapper<TRequest, TResponse, TException, TExceptionHandler>(p, exceptionHandlerFactory));
+        => WithFilter<StreamExceptionHandlerWrapper<TRequest, TResponse, TException, TExceptionHandler>>(topicPattern, p => new StreamExceptionHandlerWrapper<TRequest, TResponse, TException, TExceptionHandler>(exceptionHandlerFactory));
 
     IStreamHandlerBuilder<TRequest, TResponse> WithExceptionHandler<TException, TExceptionHandler>(
-        Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory = null)
+        Func<IStreamExceptionContext<TRequest, TException>, TExceptionHandler>? exceptionHandlerFactory = null)
         where TExceptionHandler : class, IStreamExceptionHandler<TRequest, TResponse, TException>
         where TException : Exception
         => WithExceptionHandler<TException, TExceptionHandler>("*", exceptionHandlerFactory);

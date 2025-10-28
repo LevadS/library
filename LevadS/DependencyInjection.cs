@@ -16,11 +16,22 @@ public static class DependencyInjection
     /// <returns>Extended service collection</returns>
     public static IServiceCollection AddLevadS(this IServiceCollection serviceCollection, Action<ILevadSBuilder> builder)
     {
-        builder.Invoke(new LevadSBuilder(serviceCollection));
+        var servicesContainer = new ServiceContainer();
+        serviceCollection
+            .AddSingleton(servicesContainer)
+            .AddSingleton<IServiceRegister>(servicesContainer)
+            .AddSingleton<IServiceResolver>(servicesContainer)
+            .AddRuntimeRegistrationServices()
+            .AddHostedService(serviceProvider =>
+            {
+                servicesContainer.ServiceProvider = serviceProvider;
+                return servicesContainer;
+            });
+        
+        builder.Invoke(new LevadSBuilder(servicesContainer));
         
         return serviceCollection
-            .AllowResolvingKeyedServicesAsDictionary()
-            .AddSingleton<IDispatcher>(p => new Dispatcher(serviceCollection, p))
+            .AddSingleton<IDispatcher, Dispatcher>()
             
             // .AddHostedService<LevadSHost>()
             ;
@@ -33,30 +44,23 @@ public static class DependencyInjection
             return serviceCollection;
         }
 
-        return serviceCollection
-            .AddSingleton<IHandlersRegister, ServicesRegister>()
-            .AddSingleton<IMessageHandlersRegister, ServicesRegister>()
-            .AddSingleton<IRequestHandlersRegister, ServicesRegister>()
-            .AddSingleton<IStreamHandlersRegister, ServicesRegister>()
+        // Register LevadSBuilder as the single implementation instance and map all runtime registration interfaces
+        serviceCollection.AddSingleton<LevadSBuilder>();
 
-            .AddSingleton<IFiltersRegister, ServicesRegister>()
-            .AddSingleton<IMessageFiltersRegister, ServicesRegister>()
-            .AddSingleton<IRequestFiltersRegister, ServicesRegister>()
-            .AddSingleton<IStreamFiltersRegister, ServicesRegister>()
+        var runtimeInterfaces = new[]
+        {
+            typeof(IHandlersRegister), typeof(IMessageHandlersRegister), typeof(IRequestHandlersRegister), typeof(IStreamHandlersRegister),
+            typeof(IFiltersRegister), typeof(IMessageFiltersRegister), typeof(IRequestFiltersRegister), typeof(IStreamFiltersRegister),
+            typeof(IDispatchFiltersRegister), typeof(IMessageDispatchFiltersRegister), typeof(IRequestDispatchFiltersRegister), typeof(IStreamDispatchFiltersRegister),
+            typeof(IExceptionHandlersRegister), typeof(IMessageExceptionHandlersRegister), typeof(IRequestExceptionHandlersRegister), typeof(IStreamExceptionHandlersRegister),
+            typeof(IMessageServicesRegister), typeof(IRequestServicesRegister), typeof(IStreamServicesRegister)
+        };
 
-            .AddSingleton<IDispatchFiltersRegister, ServicesRegister>()
-            .AddSingleton<IMessageDispatchFiltersRegister, ServicesRegister>()
-            .AddSingleton<IRequestDispatchFiltersRegister, ServicesRegister>()
-            .AddSingleton<IStreamDispatchFiltersRegister, ServicesRegister>()
+        foreach (var iface in runtimeInterfaces)
+        {
+            serviceCollection.AddSingleton(iface, sp => sp.GetRequiredService<LevadSBuilder>());
+        }
 
-            .AddSingleton<IExceptionHandlersRegister, ServicesRegister>()
-            .AddSingleton<IMessageExceptionHandlersRegister, ServicesRegister>()
-            .AddSingleton<IRequestExceptionHandlersRegister, ServicesRegister>()
-            .AddSingleton<IStreamExceptionHandlersRegister, ServicesRegister>()
-            
-            .AddSingleton<IMessageServicesRegister, ServicesRegister>()
-            .AddSingleton<IRequestServicesRegister, ServicesRegister>()
-            .AddSingleton<IStreamServicesRegister, ServicesRegister>()
-        ;
+        return serviceCollection;
     }
 }

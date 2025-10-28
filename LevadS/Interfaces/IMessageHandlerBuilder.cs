@@ -12,12 +12,11 @@ public interface IMessageHandlerBuilder<TMessage> : ILevadSBuilder
     IMessageHandlerBuilder<TMessage> WithFilter(MessageHandlingFilterDelegate<TMessage> filterDelegate)
         => WithFilter<MessageHandlingFilterWrapper<TMessage>>("*", p => new MessageHandlingFilterWrapper<TMessage>(filterDelegate));
     
-    IMessageHandlerBuilder<TMessage> WithFilter<TFilter>(string topicPattern,
-        Func<IServiceProvider, TFilter>? filterFactory = null)
+    IMessageHandlerBuilder<TMessage> WithFilter<TFilter>(string topicPattern, Func<IMessageContext<TMessage>, TFilter>? filterFactory = null)
         where TFilter : class, IMessageHandlingFilter<TMessage>;
 
     IMessageHandlerBuilder<TMessage> WithFilter<TFilter>(
-        Func<IServiceProvider, TFilter>? filterFactory = null)
+        Func<IMessageContext<TMessage>, TFilter>? filterFactory = null)
         where TFilter : class, IMessageHandlingFilter<TMessage>
         => WithFilter<TFilter>("*", filterFactory);
     
@@ -32,13 +31,13 @@ public interface IMessageHandlerBuilder<TMessage> : ILevadSBuilder
         => WithExceptionHandler("*", exceptionHandlerDelegate);
     
     IMessageHandlerBuilder<TMessage> WithExceptionHandler<TException, TExceptionHandler>(string topicPattern,
-        Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory = null)
+        Func<IMessageExceptionContext<TMessage, TException>, TExceptionHandler>? exceptionHandlerFactory = null)
         where TException : Exception
         where TExceptionHandler : class, IMessageExceptionHandler<TMessage, TException>
-        => WithFilter<MessageExceptionHandlerWrapper<TMessage, TException, TExceptionHandler>>(topicPattern, p => new MessageExceptionHandlerWrapper<TMessage, TException, TExceptionHandler>(p, exceptionHandlerFactory));
+        => WithFilter<MessageExceptionHandlerWrapper<TMessage, TException, TExceptionHandler>>(topicPattern, p => new MessageExceptionHandlerWrapper<TMessage, TException, TExceptionHandler>(exceptionHandlerFactory));
 
     IMessageHandlerBuilder<TMessage> WithExceptionHandler<TException, TExceptionHandler>(
-        Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory = null)
+        Func<IMessageExceptionContext<TMessage, TException>, TExceptionHandler>? exceptionHandlerFactory = null)
         where TExceptionHandler : class, IMessageExceptionHandler<TMessage, TException>
         where TException : Exception
         => WithExceptionHandler<TException, TExceptionHandler>("*", exceptionHandlerFactory);

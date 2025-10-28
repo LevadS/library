@@ -13,11 +13,11 @@ public interface IRequestHandlerBuilder<out TRequest, TResponse> : ILevadSBuilde
         => WithFilter<RequestHandlingFilterWrapper<TRequest, TResponse>>("*", p => new RequestHandlingFilterWrapper<TRequest, TResponse>(filterDelegate));
     
     IRequestHandlerBuilder<TRequest, TResponse> WithFilter<TFilter>(string topicPattern,
-        Func<IServiceProvider, TFilter>? filterFactory = null)
+        Func<IRequestContext<TRequest>, TFilter>? filterFactory = null)
         where TFilter : class, IRequestHandlingFilter<TRequest, TResponse>;
 
     IRequestHandlerBuilder<TRequest, TResponse> WithFilter<TFilter>(
-        Func<IServiceProvider, TFilter>? filterFactory = null)
+        Func<IRequestContext<TRequest>, TFilter>? filterFactory = null)
         where TFilter : class, IRequestHandlingFilter<TRequest, TResponse>
         => WithFilter<TFilter>("*", filterFactory);
     
@@ -32,13 +32,13 @@ public interface IRequestHandlerBuilder<out TRequest, TResponse> : ILevadSBuilde
         => WithExceptionHandler("*", exceptionHandlerDelegate);
     
     IRequestHandlerBuilder<TRequest, TResponse> WithExceptionHandler<TException, TExceptionHandler>(string topicPattern,
-        Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory = null)
+        Func<IRequestContext<TRequest>, TExceptionHandler>? exceptionHandlerFactory = null)
         where TException : Exception
         where TExceptionHandler : class, IRequestExceptionHandler<TRequest, TResponse, TException>
-        => WithFilter<RequestExceptionHandlerWrapper<TRequest, TResponse, TException, TExceptionHandler>>(topicPattern, p => new RequestExceptionHandlerWrapper<TRequest, TResponse, TException, TExceptionHandler>(p, exceptionHandlerFactory));
+        => WithFilter<RequestExceptionHandlerWrapper<TRequest, TResponse, TException, TExceptionHandler>>(topicPattern, p => new RequestExceptionHandlerWrapper<TRequest, TResponse, TException, TExceptionHandler>(exceptionHandlerFactory));
 
     IRequestHandlerBuilder<TRequest, TResponse> WithExceptionHandler<TException, TExceptionHandler>(
-        Func<IServiceProvider, TExceptionHandler>? exceptionHandlerFactory = null)
+        Func<IRequestContext<TRequest>, TExceptionHandler>? exceptionHandlerFactory = null)
         where TExceptionHandler : class, IRequestExceptionHandler<TRequest, TResponse, TException>
         where TException : Exception
         => WithExceptionHandler<TException, TExceptionHandler>("*", exceptionHandlerFactory);

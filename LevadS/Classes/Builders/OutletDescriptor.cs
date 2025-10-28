@@ -14,7 +14,7 @@ internal class OutletDescriptor<TMessage>(params string[] topicPatterns)
     private readonly string[] _topicPatterns = topicPatterns;
 
     public override async Task<IAsyncDisposable> SetupAsync(ILevada levada)
-        => new DisposableContainer(
+        => new AsyncDisposableContainer(
             await Task.WhenAll(_topicPatterns.Select(levada.RegisterOutletAsync<TMessage>))
         );
 }

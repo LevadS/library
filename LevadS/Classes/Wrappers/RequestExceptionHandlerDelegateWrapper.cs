@@ -36,8 +36,3 @@ internal class RequestExceptionHandlerDelegateWrapper<TRequest, TResponse, TExce
         return response!;
     }
 }
-
-internal class RequestExceptionHandlerDelegateWrapper<TRequest, TException>(
-    RequestExceptionHandlerDelegate<TRequest, object, TException> exceptionHandler)
-    : RequestExceptionHandlerDelegateWrapper<TRequest, object, TException>(exceptionHandler), IRequestHandlingFilter<TRequest>
-    where TException : Exception;

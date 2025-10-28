@@ -121,6 +121,11 @@ public static class StringExtensions
         // ensure caller dictionary is cleared before matching
         capturedValues.Clear();
 
+        if (pattern == "*")
+        {
+            return true;
+        }
+
         var tParts = topic.Split(separator);
         // Use a custom splitter that ignores separator characters inside capture braces { ... }
         var pParts = SplitPatternParts(pattern, separator);

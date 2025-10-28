@@ -6,27 +6,27 @@ namespace LevadS;
 
 public interface IRequestFiltersRegister
 {
-    IAsyncDisposable AddRequestFilter<TRequest, TResponse>(string topicPattern, RequestHandlingFilterDelegate<TRequest, TResponse> filterDelegate)
+    IDisposable AddRequestFilter<TRequest, TResponse>(string topicPattern, RequestHandlingFilterDelegate<TRequest, TResponse> filterDelegate)
         => AddRequestFilter<TRequest, TResponse, RequestHandlingFilterWrapper<TRequest, TResponse>>(topicPattern, p => new RequestHandlingFilterWrapper<TRequest, TResponse>(filterDelegate));
 
-    IAsyncDisposable AddRequestFilter<TRequest, TResponse>(RequestHandlingFilterDelegate<TRequest, TResponse> filterDelegate)
+    IDisposable AddRequestFilter<TRequest, TResponse>(RequestHandlingFilterDelegate<TRequest, TResponse> filterDelegate)
         => AddRequestFilter<TRequest, TResponse, RequestHandlingFilterWrapper<TRequest, TResponse>>("*", p => new RequestHandlingFilterWrapper<TRequest, TResponse>(filterDelegate));
 
-    IAsyncDisposable AddRequestFilter<TRequest, TResponse, TFilter>(string topicPattern,
-        Func<IServiceProvider, TFilter>? filterFactory = null)
+    IDisposable AddRequestFilter<TRequest, TResponse, TFilter>(string topicPattern,
+        Func<IRequestContext<TRequest>, TFilter>? filterFactory = null)
         where TFilter : class, IRequestHandlingFilter<TRequest, TResponse>;
 
-    IAsyncDisposable AddRequestFilter<TRequest, TResponse, TFilter>(
-        Func<IServiceProvider, TFilter>? filterFactory = null)
+    IDisposable AddRequestFilter<TRequest, TResponse, TFilter>(
+        Func<IRequestContext<TRequest>, TFilter>? filterFactory = null)
         where TFilter : class, IRequestHandlingFilter<TRequest, TResponse>
         => AddRequestFilter<TRequest, TResponse, TFilter>("*", filterFactory);
 
-    IAsyncDisposable AddRequestFilter<TRequest, TFilter>(string topicPattern,
-        Func<IServiceProvider, TFilter>? filterFactory = null)
+    IDisposable AddRequestFilter<TRequest, TFilter>(string topicPattern,
+        Func<IRequestContext<TRequest>, TFilter>? filterFactory = null)
         where TFilter : class, IRequestHandlingFilter<TRequest>;
 
-    IAsyncDisposable AddRequestFilter<TRequest, TFilter>(
-        Func<IServiceProvider, TFilter>? filterFactory = null)
+    IDisposable AddRequestFilter<TRequest, TFilter>(
+        Func<IRequestContext<TRequest>, TFilter>? filterFactory = null)
         where TFilter : class, IRequestHandlingFilter<TRequest>
         => AddRequestFilter<TRequest, TFilter>("*", filterFactory);
 }

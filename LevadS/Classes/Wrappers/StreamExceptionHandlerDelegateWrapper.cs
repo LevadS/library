@@ -38,8 +38,3 @@ internal class StreamExceptionHandlerDelegateWrapper<TRequest, TResponse, TExcep
         }
     }
 }
-
-internal class StreamExceptionHandlerDelegateWrapper<TRequest, TException>(
-    StreamExceptionHandlerDelegate<TRequest, object, TException> exceptionHandler)
-    : StreamExceptionHandlerDelegateWrapper<TRequest, object, TException>(exceptionHandler), IStreamHandlingFilter<TRequest>
-    where TException : Exception;

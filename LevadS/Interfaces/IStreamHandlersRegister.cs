@@ -14,18 +14,18 @@ public interface IStreamHandlersRegister
         }
 
         return AddStreamHandler<TRequest, TResponse, StreamHandlerDelegateWrapper<TRequest, TResponse>>(topicPattern,
-            (serviceProvider, _) => new StreamHandlerDelegateWrapper<TRequest, TResponse>(serviceProvider, handler));
+            _ => new StreamHandlerDelegateWrapper<TRequest, TResponse>(handler));
     }
 
     IDisposableStreamHandlerBuilder<TRequest, TResponse> AddStreamHandler<TRequest, TResponse>(Delegate handler)
         => AddStreamHandler<TRequest, TResponse>("*", handler);
     
     IDisposableStreamHandlerBuilder<TRequest, TResponse> AddStreamHandler<TRequest, TResponse, THandler>(string topicPattern,
-        Func<IServiceProvider, IStreamContext<TRequest>, THandler>? handlerFactory = null)
+        Func<IStreamContext<TRequest>, THandler>? handlerFactory = null)
         where THandler : class, IStreamHandler<TRequest, TResponse>;
 
     IDisposableStreamHandlerBuilder<TRequest, TResponse> AddStreamHandler<TRequest, TResponse, THandler>(
-        Func<IServiceProvider, IStreamContext<TRequest>, THandler>? handlerFactory = null)
+        Func<IStreamContext<TRequest>, THandler>? handlerFactory = null)
         where THandler : class, IStreamHandler<TRequest, TResponse>
         => AddStreamHandler<TRequest, TResponse, THandler>("*", handlerFactory);
 }

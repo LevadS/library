@@ -14,41 +14,45 @@ public class SimpleSends : BaseTestClass
     public override void Cleanup()
         => base.Cleanup();
 
-    private int _handlingCounter = 0;
+    private int _handlingCounter1 = 0;
+
+    private int _handlingCounter2 = 0;
 
     protected override void InitializeLevadS(ILevadSBuilder builder)
     {
-        builder.AddMessageHandler<SimpleMessage>(() => _handlingCounter++);
+        builder.AddMessageHandler<SimpleMessage>("foo", () => _handlingCounter2++);
         
-        builder.AddMessageHandler<SimpleMessage>("foo", () => _handlingCounter++);
+        builder.AddMessageHandler<SimpleMessage>("foo:#", () => _handlingCounter2++);
         
-        builder.AddMessageHandler<SimpleMessage>("foo:#", () => _handlingCounter++);
+        builder.AddMessageHandler<SimpleMessage>("foo:*", () => _handlingCounter2++);
         
-        builder.AddMessageHandler<SimpleMessage>("foo:*", () => _handlingCounter++);
-        
-        builder.AddMessageHandler<SimpleMessage>("boo:{value}", (string value) =>
-        {
-            if (value == "far")
-            {
-                _handlingCounter++;
-            }
-        });
+        builder.AddMessageHandler<SimpleMessage>("bar:+", () => _handlingCounter2++);
         
         builder.AddMessageHandler<SimpleMessage>("boo:{value:int}", (int value) =>
         {
             if (value == 42)
             {
-                _handlingCounter++;
+                _handlingCounter2++;
             }
         });
+        
+        builder.AddMessageHandler<SimpleMessage>("boo:{value:string}", (string value) =>
+        {
+            if (value == "far")
+            {
+                _handlingCounter2++;
+            }
+        });
+        
+        builder.AddMessageHandler<OtherMessage>(() => _handlingCounter1++);
     }
 
     [TestMethod]
     public async Task Simple()
     {
-        await Dispatcher.SendAsync(new SimpleMessage());
+        await Dispatcher.SendAsync(new OtherMessage());
         
-        Assert.AreEqual(1, _handlingCounter);
+        Assert.AreEqual(1, _handlingCounter1);
     }
 
     [TestMethod]
@@ -56,7 +60,7 @@ public class SimpleSends : BaseTestClass
     {
         await Dispatcher.SendAsync(new SimpleMessage(), "foo");
         
-        Assert.AreEqual(1, _handlingCounter);
+        Assert.AreEqual(1, _handlingCounter2);
     }
 
     [TestMethod]
@@ -64,7 +68,7 @@ public class SimpleSends : BaseTestClass
     {
         await Dispatcher.SendAsync(new SimpleMessage(), "foo:bar");
         
-        Assert.AreEqual(1, _handlingCounter);
+        Assert.AreEqual(1, _handlingCounter2);
     }
 
     [TestMethod]
@@ -72,7 +76,26 @@ public class SimpleSends : BaseTestClass
     {
         await Dispatcher.SendAsync(new SimpleMessage(), "foo:bar:baz");
         
-        Assert.AreEqual(1, _handlingCounter);
+        Assert.AreEqual(1, _handlingCounter2);
+    }
+
+    [TestMethod]
+    public async Task MultiplePlusWildcardTopic()
+    {
+        await Dispatcher.SendAsync(new SimpleMessage(), "bar:baz:foo");
+        
+        Assert.AreEqual(1, _handlingCounter2);
+    }
+
+    [TestMethod]
+    public async Task MultiplePlusWildcardTopic_Negative()
+    {
+        await Assert.ThrowsExceptionAsync<InvalidOperationException>(async () =>
+        {
+            await Dispatcher.SendAsync(new SimpleMessage(), "bar");
+        });
+
+        Assert.AreEqual(0, _handlingCounter2);
     }
 
     [TestMethod]
@@ -80,7 +103,7 @@ public class SimpleSends : BaseTestClass
     {
         await Dispatcher.SendAsync(new SimpleMessage(), "boo:far");
         
-        Assert.AreEqual(1, _handlingCounter);
+        Assert.AreEqual(1, _handlingCounter2);
     }
 
     [TestMethod]
@@ -88,6 +111,6 @@ public class SimpleSends : BaseTestClass
     {
         await Dispatcher.SendAsync(new SimpleMessage(), "boo:42");
         
-        Assert.AreEqual(1, _handlingCounter);
+        Assert.AreEqual(1, _handlingCounter2);
     }
 }
