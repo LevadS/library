@@ -8,7 +8,7 @@ public interface IServiceRegister
         Type serviceType,
         Type implementationType,
         Type inputType,
-        Type? outputType,
+        Type outputType,
         IServiceEnveloper enveloper,
         string topicPattern = "*",
         ServiceLifetime lifetime = ServiceLifetime.Transient,

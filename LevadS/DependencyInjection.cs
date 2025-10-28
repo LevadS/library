@@ -44,30 +44,23 @@ public static class DependencyInjection
             return serviceCollection;
         }
 
-        return serviceCollection
-            .AddSingleton<IHandlersRegister, LevadSBuilder>()
-            .AddSingleton<IMessageHandlersRegister, LevadSBuilder>()
-            .AddSingleton<IRequestHandlersRegister, LevadSBuilder>()
-            .AddSingleton<IStreamHandlersRegister, LevadSBuilder>()
+        // Register LevadSBuilder as the single implementation instance and map all runtime registration interfaces
+        serviceCollection.AddSingleton<LevadSBuilder>();
 
-            .AddSingleton<IFiltersRegister, LevadSBuilder>()
-            .AddSingleton<IMessageFiltersRegister, LevadSBuilder>()
-            .AddSingleton<IRequestFiltersRegister, LevadSBuilder>()
-            .AddSingleton<IStreamFiltersRegister, LevadSBuilder>()
+        var runtimeInterfaces = new[]
+        {
+            typeof(IHandlersRegister), typeof(IMessageHandlersRegister), typeof(IRequestHandlersRegister), typeof(IStreamHandlersRegister),
+            typeof(IFiltersRegister), typeof(IMessageFiltersRegister), typeof(IRequestFiltersRegister), typeof(IStreamFiltersRegister),
+            typeof(IDispatchFiltersRegister), typeof(IMessageDispatchFiltersRegister), typeof(IRequestDispatchFiltersRegister), typeof(IStreamDispatchFiltersRegister),
+            typeof(IExceptionHandlersRegister), typeof(IMessageExceptionHandlersRegister), typeof(IRequestExceptionHandlersRegister), typeof(IStreamExceptionHandlersRegister),
+            typeof(IMessageServicesRegister), typeof(IRequestServicesRegister), typeof(IStreamServicesRegister)
+        };
 
-            .AddSingleton<IDispatchFiltersRegister, LevadSBuilder>()
-            .AddSingleton<IMessageDispatchFiltersRegister, LevadSBuilder>()
-            .AddSingleton<IRequestDispatchFiltersRegister, LevadSBuilder>()
-            .AddSingleton<IStreamDispatchFiltersRegister, LevadSBuilder>()
+        foreach (var iface in runtimeInterfaces)
+        {
+            serviceCollection.AddSingleton(iface, sp => sp.GetRequiredService<LevadSBuilder>());
+        }
 
-            .AddSingleton<IExceptionHandlersRegister, LevadSBuilder>()
-            .AddSingleton<IMessageExceptionHandlersRegister, LevadSBuilder>()
-            .AddSingleton<IRequestExceptionHandlersRegister, LevadSBuilder>()
-            .AddSingleton<IStreamExceptionHandlersRegister, LevadSBuilder>()
-            
-            .AddSingleton<IMessageServicesRegister, LevadSBuilder>()
-            .AddSingleton<IRequestServicesRegister, LevadSBuilder>()
-            .AddSingleton<IStreamServicesRegister, LevadSBuilder>()
-        ;
+        return serviceCollection;
     }
 }

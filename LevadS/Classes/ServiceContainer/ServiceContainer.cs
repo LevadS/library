@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using LevadS.Classes;
 using LevadS.Classes.Extensions;
 using LevadS.Extensions;
@@ -10,31 +11,36 @@ namespace LevadS;
 
 internal sealed class ServiceContainer : IServiceRegister, IServiceResolver, IHostedService
 {
-    private IServiceProvider _rootServiceProvider;
+    private IServiceProvider? _rootServiceProvider;
     public IServiceProvider ServiceProvider
     {
-        get => _rootServiceProvider;
+        get
+        {
+            Debug.Assert(_rootServiceProvider != null, "ServiceContainer cannot resolve services before building global IServiceProvider");
+            return _rootServiceProvider;
+        }
         set
         {
             _rootServiceProvider = value;
-            _scopeFactory = _rootServiceProvider.GetService<IServiceScopeFactory>()
-                            ?? throw new InvalidOperationException("The provided IServiceProvider does not expose an IServiceScopeFactory.");
+            // _scopeFactory = _rootServiceProvider.GetService<IServiceScopeFactory>()
+            //                 ?? throw new InvalidOperationException("The provided IServiceProvider does not expose an IServiceScopeFactory.");
             _rootContainerScope = new ServiceContainerScope(this, _rootServiceProvider, null, ownsScope: false);
         }
     }
-    private IServiceScopeFactory _scopeFactory;
+
+    // private IServiceScopeFactory _scopeFactory;
     private readonly object _registrationLock = new();
     private readonly List<IDisposable> _singletonDisposables = new();
     private readonly List<IAsyncDisposable> _singletonAsyncDisposables = new();
     private ServiceRegistration[] _registrations = Array.Empty<ServiceRegistration>();
-    private ServiceContainerScope _rootContainerScope;
+    private ServiceContainerScope? _rootContainerScope;
     private bool _disposed;
 
     public IDisposable Register(
         Type serviceType,
         Type implementationType,
         Type inputType,
-        Type? outputType,
+        Type outputType,
         IServiceEnveloper enveloper,
         string topicPattern = "*",
         ServiceLifetime lifetime = ServiceLifetime.Transient,
@@ -121,17 +127,22 @@ internal sealed class ServiceContainer : IServiceRegister, IServiceResolver, IHo
     //     => RegisterInstance<TService, TService>(topicPattern, instance, key);
 
     public IServiceResolver CreateScope()
-        => _rootContainerScope.CreateScope();
+    {
+        Debug.Assert(_rootContainerScope != null, "ServiceContainer cannot resolve services before building global IServiceProvider");
+        return _rootContainerScope.CreateScope();
+    }
 
     public IEnumerable<(TService, IContext)> GetServices<TService, TRequestedInput, TRequestedOutput>(IContext context, string[]? keys = null)
     {
         ArgumentNullException.ThrowIfNull(context);
+        Debug.Assert(_rootContainerScope != null, "ServiceContainer cannot resolve services before building global IServiceProvider");
         return GetServices<TService, TRequestedInput, TRequestedOutput>(_rootContainerScope, context, keys);
     }
 
     public IEnumerable<(object, IContext)> GetServices<TRequestedInput, TRequestedOutput>(Type serviceType, IContext context, string[]? keys = null)
     {
         ArgumentNullException.ThrowIfNull(context);
+        Debug.Assert(_rootContainerScope != null, "ServiceContainer cannot resolve services before building global IServiceProvider");
         return GetServices<TRequestedInput, TRequestedOutput>(serviceType, _rootContainerScope, context, keys);
     }
 
@@ -157,28 +168,15 @@ internal sealed class ServiceContainer : IServiceRegister, IServiceResolver, IHo
     internal (TService, IContext)? GetService<TService, TRequestedInput, TRequestedOutput>(ServiceContainerScope containerScope, Context context,  string[]? keys = null)
         => GetServices<TService, TRequestedInput, TRequestedOutput>(containerScope, context, keys).FirstOrDefault();
 
-    // public IEnumerable<TopicServiceResolution<TService>> GetServiceResolutions<TService>(string topic, string? key = null)
-    //     => GetServiceResolutions<TService>(_rootScope, topic, key);
-
-    // public IEnumerable<TopicServiceResolution<TService>> GetServiceResolutions<TService>(TopicServiceScope scope, string topic, string? key = null)
-    // {
-    //     ThrowIfDisposed();
-    //     ArgumentNullException.ThrowIfNull(scope);
-    //     ArgumentNullException.ThrowIfNull(topic);
-    //     scope.EnsureNotDisposed();
-    //
-    //     foreach (var result in GetResolutionsInternal(typeof(TService), scope, topic, key))
-    //     {
-    //         yield return new TopicServiceResolution<TService>((TService)result.Instance, result.TopicPattern, result.CapturedValues, result.Key);
-    //     }
-    // }
-
     public async ValueTask DisposeAsync()
     {
         if (_disposed) return;
         _disposed = true;
 
-        await _rootContainerScope.DisposeAsync().ConfigureAwait(false);
+        if (_rootContainerScope != null)
+        {
+            await _rootContainerScope.DisposeAsync().ConfigureAwait(false);
+        }
 
         List<IAsyncDisposable> asyncSingletons;
         List<IDisposable> syncSingletons;
@@ -211,7 +209,7 @@ internal sealed class ServiceContainer : IServiceRegister, IServiceResolver, IHo
         ServiceLifetime lifetime,
         Type serviceType,
         Type inputType,
-        Type outputType,
+        Type? outputType,
         IServiceEnveloper enveloper,
         Func<IContext, object> factory,
         object? singletonInstance = null,
@@ -229,7 +227,7 @@ internal sealed class ServiceContainer : IServiceRegister, IServiceResolver, IHo
         }
 
         var registrationType = typeof(ServiceRegistration<,>).MakeGenericType(inputType, outputType ?? typeof(object));
-        var registration = (ServiceRegistration)Activator.CreateInstance(registrationType, serviceType, enveloper, topicPattern, lifetime, factory, singletonInstance, key);
+        var registration = (ServiceRegistration)Activator.CreateInstance(registrationType, serviceType, enveloper, topicPattern, lifetime, factory, singletonInstance, key)!;
         var handle = AddRegistration(registration);
 
         if (singletonInstance != null)
@@ -289,7 +287,7 @@ internal sealed class ServiceContainer : IServiceRegister, IServiceResolver, IHo
 
         registration.DisposeSingletonIfNeeded(this);
 
-        _rootContainerScope.ReleaseRegistration(registration);
+        _rootContainerScope?.ReleaseRegistration(registration);
     }
 
     private sealed class RegistrationHandle : IDisposable
@@ -318,11 +316,6 @@ internal sealed class ServiceContainer : IServiceRegister, IServiceResolver, IHo
         var registrations = Volatile.Read(ref _registrations);
         foreach (var registration in registrations)
         {
-            // if (registration.ServiceType != serviceType)
-            // {
-            //     continue;
-            // }
-
             if (registration.IsVariant
                     ? serviceType.GetGenericTypeDefinition() != registration.GenericTypeDefinition ||
                         (
@@ -350,7 +343,7 @@ internal sealed class ServiceContainer : IServiceRegister, IServiceResolver, IHo
             ((Context)context).CapturedValues = new ReadOnlyDictionary<string, object>(captures);
             ((Context)context).Key = registration.Key;
             var instance = containerScope.Resolve<TRequestedInput, TRequestedOutput>(registration, context);
-            yield return (instance, context);//new ResolutionResult(instance, registration.TopicPattern, context.CapturedValues, registration.Key);
+            yield return (instance, context);
         }
     }
 

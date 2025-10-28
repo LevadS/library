@@ -37,7 +37,7 @@ internal class LevadSBuilder(IServiceRegister serviceRegister) :
                     handlerType,
                     interfaceType.GenericTypeArguments[0],
                     null,
-                    new NoopEnveloper(),
+                    NoopEnveloper.Instance,
                     topicPattern,
                     $"{handlerType}"
                 );
@@ -53,7 +53,7 @@ internal class LevadSBuilder(IServiceRegister serviceRegister) :
                     handlerType,
                     interfaceType.GenericTypeArguments[0],
                     null,
-                    new MessageDispatchEnveloper(),
+                    MessageDispatchEnveloper.Instance,
                     topicPattern
                 );
             });
@@ -68,7 +68,7 @@ internal class LevadSBuilder(IServiceRegister serviceRegister) :
                     handlerType,
                     interfaceType.GenericTypeArguments[0],
                     null,
-                    new MessageHandlingEnveloper(),
+                    MessageHandlingEnveloper.Instance,
                     topicPattern,
                     scopeType != null
                         ? $"{scopeType}"
@@ -86,7 +86,7 @@ internal class LevadSBuilder(IServiceRegister serviceRegister) :
                     handlerType,
                     interfaceType.GenericTypeArguments[0],
                     null,
-                    new MessageHandlingEnveloper(),
+                    MessageHandlingEnveloper.Instance,
                     topicPattern,
                     scopeType != null
                         ? $"{scopeType}"
@@ -104,7 +104,7 @@ internal class LevadSBuilder(IServiceRegister serviceRegister) :
                     handlerType,
                     interfaceType.GenericTypeArguments[0],
                     interfaceType.GenericTypeArguments[1],
-                    new NoopEnveloper(),
+                    NoopEnveloper.Instance,
                     topicPattern,
                     $"{handlerType}"
                 );
@@ -120,7 +120,7 @@ internal class LevadSBuilder(IServiceRegister serviceRegister) :
                     handlerType,
                     interfaceType.GenericTypeArguments[0],
                     interfaceType.GenericTypeArguments[1],
-                    new RequestDispatchEnveloper(),
+                    RequestDispatchEnveloper.Instance,
                     topicPattern
                 );
             });
@@ -135,7 +135,7 @@ internal class LevadSBuilder(IServiceRegister serviceRegister) :
                     handlerType,
                     interfaceType.GenericTypeArguments[0],
                     interfaceType.GenericTypeArguments[1],
-                    new RequestHandlingEnveloper(),
+                    RequestHandlingEnveloper.Instance,
                     topicPattern,
                     scopeType != null
                         ? $"{scopeType}"
@@ -153,7 +153,7 @@ internal class LevadSBuilder(IServiceRegister serviceRegister) :
                     handlerType,
                     interfaceType.GenericTypeArguments[0],
                     interfaceType.GenericTypeArguments[1],
-                    new RequestHandlingEnveloper(),
+                    RequestHandlingEnveloper.Instance,
                     topicPattern,
                     scopeType != null
                         ? $"{scopeType}"
@@ -171,7 +171,7 @@ internal class LevadSBuilder(IServiceRegister serviceRegister) :
                     handlerType,
                     interfaceType.GenericTypeArguments[0],
                     interfaceType.GenericTypeArguments[1],
-                    new NoopEnveloper(),
+                    NoopEnveloper.Instance,
                     topicPattern,
                     $"{handlerType}"
                 );
@@ -187,7 +187,7 @@ internal class LevadSBuilder(IServiceRegister serviceRegister) :
                     handlerType,
                     interfaceType.GenericTypeArguments[0],
                     interfaceType.GenericTypeArguments[1],
-                    new StreamDispatchEnveloper(),
+                    StreamDispatchEnveloper.Instance,
                     topicPattern
                 );
             });
@@ -202,7 +202,7 @@ internal class LevadSBuilder(IServiceRegister serviceRegister) :
                     handlerType,
                     interfaceType.GenericTypeArguments[0],
                     interfaceType.GenericTypeArguments[1],
-                    new StreamHandlingEnveloper(),
+                    StreamHandlingEnveloper.Instance,
                     topicPattern,
                     scopeType != null
                         ? $"{scopeType}"
@@ -220,7 +220,7 @@ internal class LevadSBuilder(IServiceRegister serviceRegister) :
                     handlerType,
                     interfaceType.GenericTypeArguments[0],
                     interfaceType.GenericTypeArguments[1],
-                    new StreamHandlingEnveloper(),
+                    StreamHandlingEnveloper.Instance,
                     topicPattern,
                     scopeType != null
                         ? $"{scopeType}"

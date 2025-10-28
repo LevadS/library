@@ -14,7 +14,7 @@
         <RepositoryUrl>https://github.com/LevadS/library</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageTags>mediator;messaging;message;notification;request;response;req;resp;stream;topic</PackageTags>
-        <Version>0.2.0-beta</Version>
+        <Version>0.3.0-beta</Version>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
     </PropertyGroup>

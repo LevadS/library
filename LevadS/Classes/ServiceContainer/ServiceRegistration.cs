@@ -4,16 +4,23 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace LevadS;
 
-internal abstract class ServiceRegistration
+internal abstract class ServiceRegistration(
+    Type serviceType,
+    Type genericTypeDefinition,
+    Type inputType,
+    Type outputType,
+    string topicPattern,
+    ServiceLifetime lifetime
+)
 {
-    internal Type ServiceType { get; set; }
-    internal Type GenericTypeDefinition { get; set; }
-    internal Type InputType { get; set; }
-    internal Type? OutputType { get; set; }
-    internal string TopicPattern { get; set; }
-    internal ServiceLifetime Lifetime { get; set; }
-    internal string? Key { get; set; }
-    internal bool IsVariant { get; set; }
+    internal Type ServiceType { get; } = serviceType; 
+    internal Type GenericTypeDefinition { get; } = genericTypeDefinition; 
+    internal Type InputType { get; } = inputType;
+    internal Type OutputType { get; } = outputType;
+    internal string TopicPattern { get; } = topicPattern; 
+    internal ServiceLifetime Lifetime { get; } = lifetime; 
+    internal string? Key { get; init; }
+    internal bool IsVariant { get; init; }
 
     internal abstract void DisposeSingletonIfNeeded(ServiceContainer container);
     internal abstract object GetOrCreateSingleton<TInput, TOutput>(ServiceContainer container, IContext context);
@@ -35,16 +42,17 @@ internal class ServiceRegistration<TInput, TOutput> : ServiceRegistration
         Func<IContext, object> factory,
         object? singletonInstance,
         string? key
+    ) : base(
+        serviceType,
+        serviceType.GetGenericTypeDefinition(),
+        typeof(TInput),
+        typeof(TOutput),
+        topicPattern,
+        lifetime
     )
     {
-        ServiceType = serviceType;
         IsVariant = ServiceType.IsAssignableTo(typeof(IFilter));
-        GenericTypeDefinition = ServiceType.GetGenericTypeDefinition();
-        InputType = typeof(TInput);
-        OutputType = typeof(TOutput);
         Enveloper = enveloper;
-        TopicPattern = topicPattern;
-        Lifetime = lifetime;
         _factory = factory;
         Key = key;
 

@@ -235,7 +235,7 @@ internal static class ServiceRegisterExtensions
     )
     {
         // LogHandlerRegistration("Message Handler", typeof(TMessage), topicPattern);
-        return serviceRegister.Register(serviceType, implementationType, inputType, outputType, enveloper, topicPattern, key: key);
+        return serviceRegister.Register(serviceType, implementationType, inputType, outputType ?? typeof(object), enveloper, topicPattern, key: key);
     }
     
     
