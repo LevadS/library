@@ -3,15 +3,21 @@ using System.Diagnostics;
 using LevadS;
 using LevadS.Classes;
 using LevadS.Examples.ExceptionHandlers;
+using LevadS.Examples.Filters;
 using LevadS.Examples.Handlers;
 using LevadS.Examples.Messages;
 using LevadS.Interfaces;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Net.Http.Headers;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddLevadS(b => b
     .RegisterServicesFromAssemblyContaining<StringHandler>()
+    
+    .AddMessageFilter<string, StringFilter>()
+    
     .AddStreamExceptionHandler<IntStreamRequest, int, Exception>((ctx, callback) =>
     {
         callback(42);
@@ -48,15 +54,23 @@ app.UseHttpsRedirection();
 app
     .MapGet(
         "/weatherforecast",
-        async (IDispatcher dispatcher) => await dispatcher.RequestAsync(new WeatherForecastRequest())
+        async (IDispatcher dispatcher) => await dispatcher
+            .RequestAsync<WeatherForecast>(
+                new WeatherForecastRequest(),
+                "topic",
+                new Dictionary<string, object>() {{"x-tenant-id", "domainName"}}
+            )
     )
     .WithDescription("Returns weather forecast");
 
 app
     .MapGet(
         "/sendMessage/{topic}/{message}",
-        (IDispatcher dispatcher, string message, string topic = "foo:bar") => dispatcher.SendAsync(message, topic)
-    )
+        (IDispatcher dispatcher, IServiceProvider serviceProvider, string message, string topic = "foo:bar") =>
+        {
+            var ctx = serviceProvider.GetService<IHttpContextAccessor>();
+            return dispatcher.SendAsync(message, topic);
+        })
     .WithDescription("Sends string message to single handler. Change topic to 'foo:42' to hit another handler");
 
 app

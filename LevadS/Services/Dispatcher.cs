@@ -30,12 +30,17 @@ internal class Dispatcher : IDispatcher
             ServiceProvider = ServiceResolver.ServiceProvider
         };
 
-        return InternalDispatchMessageAsync(context, async () =>
+        return InternalDispatchMessageAsync(context, async h =>
         {
             var messageHandler = ServiceResolver.GetMessageHandler(context);
             if (messageHandler is not { Service: not null })
             {
                 throw new InvalidOperationException($"No handler found for {typeof(TMessage).Name}");
+            }
+
+            if (h != null)
+            {
+                ((Context)messageHandler.Value.Context).Headers = h;
             }
 
             await InternalHandleMessageAsync(messageHandler.Value.Service, messageHandler.Value.Context, messageHandler.Value.Context.CancellationToken);
@@ -54,7 +59,7 @@ internal class Dispatcher : IDispatcher
             ServiceProvider = ServiceResolver.ServiceProvider
         };
 
-        return InternalDispatchMessageAsync(context, async () =>
+        return InternalDispatchMessageAsync(context, async h =>
         {
             var handlers = ServiceResolver.GetMessageHandlers(context);
             foreach (var handler in handlers)
@@ -62,6 +67,11 @@ internal class Dispatcher : IDispatcher
                 if (context.CancellationToken.IsCancellationRequested)
                 {
                     break;
+                }
+
+                if (h != null)
+                {
+                    ((Context)handler.Context).Headers = h;
                 }
                 
                 await InternalHandleMessageAsync(handler.Service, handler.Context, cancellationToken);
@@ -102,7 +112,7 @@ internal class Dispatcher : IDispatcher
         var filters = ServiceResolver.GetMessageHandlingFilters(context, ((Context)context).Key!).ToList();
         using var enumerator = filters.GetEnumerator();
         MessageHandlingFilterNextDelegate callback = null!;
-        callback = async () =>
+        callback = async h =>
         {
             if (context.CancellationToken.IsCancellationRequested)
             {
@@ -111,10 +121,21 @@ internal class Dispatcher : IDispatcher
 
             if (enumerator.MoveNext() && enumerator.Current.Service != null)
             {
+
+                if (h != null)
+                {
+                    ((Context)enumerator.Current.Context).Headers = h;
+                }
+                
                 await enumerator.Current.Service.InvokeAsync(enumerator.Current.Context, callback);
             }
             else
             {
+                if (h != null)
+                {
+                    ((Context)context).Headers = h;
+                }
+                
                 await messageHandler.HandleAsync(context);
             }
         };
@@ -180,11 +201,16 @@ internal class Dispatcher : IDispatcher
             ServiceProvider = ServiceResolver.ServiceProvider
         };
 
-        return InternalDispatchRequestAsync<TRequest, TResponse>(context, async () =>
+        return InternalDispatchRequestAsync<TRequest, TResponse>(context, async h =>
         {
             var requestHandler = ServiceResolver.GetRequestHandler<TRequest, TResponse>(context);
             if (requestHandler is { Service: not null })
             {
+                if (h != null)
+                {
+                    ((Context)requestHandler.Value.Context).Headers = h;
+                }
+                
                 return await InternalHandleRequest(requestHandler.Value.Service, requestHandler.Value.Context);
             }
 
@@ -204,11 +230,16 @@ internal class Dispatcher : IDispatcher
             ServiceProvider = ServiceResolver.ServiceProvider
         };
 
-        return InternalDispatchStream(context, () =>
+        return InternalDispatchStream(context, h =>
         {
             var messageHandler = ServiceResolver.GetStreamHandler<TRequest, TResponse>(context);
             if (messageHandler is { Service: not null })
             {
+                if (h != null)
+                {
+                    ((Context)messageHandler.Value.Context).Headers = h;
+                }
+                
                 return InternalHandleStream(messageHandler.Value.Service, messageHandler.Value.Context);
             }
 
@@ -221,14 +252,24 @@ internal class Dispatcher : IDispatcher
         var filters = ServiceResolver.GetRequestHandlingFilters<TRequest, TResponse>(context, ((Context)context).Key!).ToList();
         using var enumerator = filters.GetEnumerator();
         RequestHandlingFilterNextDelegate<TResponse> callback = null!;
-        callback = async () =>
+        callback = async h =>
         {
             if (enumerator.MoveNext() && enumerator.Current.Service != null)
             {
+                if (h != null)
+                {
+                    ((Context)enumerator.Current.Context).Headers = h;
+                }
+
                 return await enumerator.Current.Service.InvokeAsync(enumerator.Current.Context, callback);
             }
             else
             {
+                if (h != null)
+                {
+                    ((Context)context).Headers = h;
+                }
+
                 return await requestHandler.HandleAsync(context);
             }
         };
@@ -242,14 +283,24 @@ internal class Dispatcher : IDispatcher
         using var enumerator = filters.GetEnumerator();
      
         StreamHandlingFilterNextDelegate<TResponse> callback = null!;
-        callback = () =>
+        callback = h =>
         {
             if (enumerator.MoveNext() && enumerator.Current.Service != null)
             {
+                if (h != null)
+                {
+                    ((Context)enumerator.Current.Context).Headers = h;
+                }
+
                 return enumerator.Current.Service.InvokeAsync(enumerator.Current.Context, callback);
             }
             else
             {
+                if (h != null)
+                {
+                    ((Context)context).Headers = h;
+                }
+
                 return streamHandler.HandleAsync(context, CancellationToken.None);
             }
         };

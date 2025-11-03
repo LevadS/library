@@ -12,7 +12,6 @@ public class RequestDispatchFiltersAdvanced : BaseTestClass
 
     [TestCleanup]
     public override void Cleanup() => base.Cleanup();
-    private int _handledOnFoo;
 
     protected override void InitializeLevadS(ILevadSBuilder builder)
     {

@@ -32,22 +32,6 @@ public interface IServiceRegister
         string? key = null
     )
         where TImplementation : class, TService;
-    
-    // IDisposable Register(
-    //     Type serviceType,
-    //     Type implementationType,
-    //     string topicPattern = "*",
-    //     ServiceLifetime lifetime = ServiceLifetime.Transient,
-    //     string? key = null
-    // );
-    //
-    // IDisposable Register<TService, TImplementation>(
-    //     string topicPattern = "*",
-    //     Func<IContext, TImplementation>? factory = null,
-    //     ServiceLifetime lifetime = ServiceLifetime.Transient,
-    //     string? key = null
-    // )
-    //     where TImplementation : class, TService;
 }
 
 public interface IServiceResolver : IDisposable, IAsyncDisposable

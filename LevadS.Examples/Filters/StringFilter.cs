@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using LevadS.Attributes;
 using LevadS.Delegates;
@@ -15,5 +16,21 @@ public class StringFilter : IMessageHandlingFilter<string>
         Debug.WriteLine("StringFilter: before");
         await next();
         Debug.WriteLine("StringFilter: after");
+    }
+}
+
+
+public class StringDispatchFilter : IMessageDispatchFilter<string>
+{
+    public async Task InvokeAsync(IMessageContext<string> messageContext, MessageDispatchFilterNextDelegate next)
+    {
+        if (messageContext.Message == "Lorem ipsum")
+        {
+            await next();
+        }
+        else
+        {
+            throw new ValidationException("Invalid message");
+        }
     }
 }

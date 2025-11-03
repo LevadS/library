@@ -44,6 +44,21 @@ public class HandlingFilters : BaseTestClass
 
     protected override void InitializeLevadS(ILevadSBuilder builder)
     {
+        builder.AddRequestHandler<IntRequest, int>("baz", (IRequestContext<IntRequest> ctx) => (int)ctx.Headers.GetValueOrDefault("boo", 0));
+        
+        builder.AddRequestFilter<IntRequest, int>("baz", (context, next) => next(new Dictionary<string, object>(context.Headers) { { "boo", 40 } }));
+        
+        builder.AddRequestFilter<IntRequest, int>("baz", (context, next) =>
+        {
+            var headers = new Dictionary<string, object>(context.Headers);
+            if (headers.TryGetValue("boo", out var boo))
+            {
+                headers["boo"] = (int)boo + 2;
+            }
+            
+            return next(headers);
+        });
+        
         builder.AddRequestHandler<IntRequest, int>("foo", () => 41);
         
         builder.AddRequestFilter<IntRequest, int>("foo", async (ctx, next) => await next() + 1);
@@ -114,6 +129,14 @@ public class HandlingFilters : BaseTestClass
     public async Task ResultChange()
     {
         var result = await Dispatcher.RequestAsync(new IntRequest(), "foo");
+        
+        Assert.AreEqual(42, result);
+    }
+
+    [TestMethod]
+    public async Task HeadersChange()
+    {
+        var result = await Dispatcher.RequestAsync(new IntRequest(), "baz");
         
         Assert.AreEqual(42, result);
     }

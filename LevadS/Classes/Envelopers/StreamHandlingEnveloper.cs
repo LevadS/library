@@ -7,9 +7,9 @@ public class StreamHandlingEnvelope<TProvidedInput, TRequestedInput, TProvidedOu
 {
     private StreamHandlingFilterNextDelegate<TRequestedOutput>? _nextDelegate;
     
-    private async IAsyncEnumerable<TProvidedOutput> NextDelegate()
+    private async IAsyncEnumerable<TProvidedOutput> NextDelegate(Dictionary<string, object>? headers = null)
     {
-        await foreach (var result in _nextDelegate!())
+        await foreach (var result in _nextDelegate!(headers))
         {
             yield return (TProvidedOutput)(object)result!;
         }

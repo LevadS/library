@@ -8,7 +8,7 @@ public delegate Task MessageDispatchFilterDelegate<in TMessage>(IMessageContext<
 
 
 
-public delegate Task MessageHandlingFilterNextDelegate();
+public delegate Task MessageHandlingFilterNextDelegate(Dictionary<string, object>? headers = null);
 
 public delegate Task MessageHandlingFilterDelegate<in TMessage>(IMessageContext<TMessage> requestContext, MessageHandlingFilterNextDelegate next);
 
@@ -25,7 +25,7 @@ public delegate Task<TResponse> RequestDispatchFilterDelegate<in TRequest, TResp
 
 
 
-public delegate Task<TResponse> RequestHandlingFilterNextDelegate<TResponse>();
+public delegate Task<TResponse> RequestHandlingFilterNextDelegate<TResponse>(Dictionary<string, object>? headers = null);
 
 public delegate Task<TResponse> RequestHandlingFilterDelegate<in TRequest, TResponse>(IRequestContext<TRequest> requestContext, RequestHandlingFilterNextDelegate<TResponse> next);
 
@@ -43,7 +43,7 @@ public delegate IAsyncEnumerable<TResponse> StreamDispatchFilterDelegate<in TReq
 
 
 
-public delegate IAsyncEnumerable<TResponse> StreamHandlingFilterNextDelegate<out TResponse>();
+public delegate IAsyncEnumerable<TResponse> StreamHandlingFilterNextDelegate<out TResponse>(Dictionary<string, object>? headers = null);
 
 public delegate IAsyncEnumerable<TResponse> StreamHandlingFilterDelegate<in TRequest, TResponse>(IStreamContext<TRequest> streamContext, StreamHandlingFilterNextDelegate<TResponse> next);
 

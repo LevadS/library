@@ -28,15 +28,15 @@ public class HandlerScopedFiltersTests : BaseTestClass
 
     protected override void InitializeLevadS(ILevadSBuilder builder)
     {
-     var a = builder.AddRequestHandler<Req, int>("scope:a:#", () => { _handledA++; return 1; })
-         .WithFilter("scope:a:#", _ => new Wrapper<int>((ctx, next) => { _order.Enqueue("K1"); return Inc(ctx, next, () => _k1++); }));
-         // Additional narrower scoped filter that should only run for topic "scope:a:only"
-         a.WithFilter("scope:a:only", _ => new Wrapper<int>((ctx, next) => Inc(ctx, next, () => _k1Narrow++)));
+        var a = builder.AddRequestHandler<Req, int>("scope:a:#", () => { _handledA++; return 1; })
+            .WithFilter("scope:a:#", _ => new Wrapper<int>((ctx, next) => { _order.Enqueue("K1"); return Inc(ctx, next, () => _k1++); }))
+            // Additional narrower scoped filter that should only run for topic "scope:a:only"
+            .WithFilter("scope:a:only", _ => new Wrapper<int>((ctx, next) => Inc(ctx, next, () => _k1Narrow++)));
 
-         builder.AddRequestHandler<Req, int>("scope:b", () => { _handledB++; return 2; })
-         .WithFilter("scope:b", _ => new Wrapper<int>((ctx, next) => { _order.Enqueue("K2"); return Inc(ctx, next, () => _k2++); }));
+        builder.AddRequestHandler<Req, int>("scope:b", () => { _handledB++; return 2; })
+            .WithFilter("scope:b", _ => new Wrapper<int>((ctx, next) => { _order.Enqueue("K2"); return Inc(ctx, next, () => _k2++); }));
 
-     builder.AddRequestFilter<Req, int>("scope:*", (ctx, next) => { _g++; _order.Enqueue("G"); return next(); });
+        builder.AddRequestFilter<Req, int>("scope:*", (ctx, next) => { _g++; _order.Enqueue("G"); return next(); });
     }
 
     private sealed class Wrapper<T>(RequestHandlingFilterDelegate<Req, T> d) : IRequestHandlingFilter<Req, T>
@@ -64,8 +64,7 @@ public class HandlerScopedFiltersTests : BaseTestClass
     {
         _order.Clear();
         _ = await Dispatcher.RequestAsync(new Req(), "scope:a:root");
-        // TODO: consider if requirement is actually needed
-        CollectionAssert.AreEqual(new[] { "K1", "G" }, _order.ToArray());
+        CollectionAssert.AreEqual(new[] { "G", "K1" }, _order.ToArray());
     }
 
     [TestMethod]

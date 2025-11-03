@@ -10,7 +10,7 @@ public class RequestHandlingEnvelope<TProvidedInput, TRequestedInput, TProvidedO
     public async Task<TRequestedOutput> InvokeAsync(IRequestContext<TRequestedInput> requestContext, RequestHandlingFilterNextDelegate<TRequestedOutput> next)
         => (TRequestedOutput)(object)await providedFilter.InvokeAsync(
             new RequestContext<TProvidedInput>((Context)requestContext),
-            async () => (TProvidedOutput)(object)await next()
+            async h => (TProvidedOutput)(object)await next(h)
         );
 }
 
