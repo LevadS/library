@@ -1,38 +1,15 @@
 using System.Text;
-using System.Diagnostics;
-using LevadS;
-using LevadS.Classes;
-using LevadS.Examples.ExceptionHandlers;
-using LevadS.Examples.Filters;
-using LevadS.Examples.Handlers;
-using LevadS.Examples.Messages;
-using LevadS.Interfaces;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Net.Http.Headers;
+using LevadS;
+using LevadS.Examples.Messages;
+using LevadS.Examples.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSingleton<OrderRepository>();
 
-builder.Services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddLevadS(b => b
-    .RegisterServicesFromAssemblyContaining<StringHandler>()
-    
-    .AddMessageFilter<string, StringFilter>()
-    
-    .AddStreamExceptionHandler<IntStreamRequest, int, Exception>((ctx, callback) =>
-    {
-        callback(42);
-        return Task.FromResult(true);
-    })
-    
-    .AddMessageHandler<string>((string message) =>
-    {
-        Console.WriteLine(message);
-    })
-    .WithFilter((ctx, next) =>
-    {
-        Console.WriteLine(ctx.Message);
-        return next();
-    })
+    .RegisterServicesFromAssemblyContaining<Order>()
 );
 
 // Add services to the container.
@@ -51,129 +28,51 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app
-    .MapGet(
-        "/weatherforecast",
-        async (IDispatcher dispatcher) => await dispatcher
-            .RequestAsync<WeatherForecast>(
-                new WeatherForecastRequest(),
-                "topic",
-                new Dictionary<string, object>() {{"x-tenant-id", "domainName"}}
-            )
-    )
-    .WithDescription("Returns weather forecast");
+app.MapPost(
+    "/orders",
+    async ([FromBody] Order order, IDispatcher dispatcher)
+        => await dispatcher.SendAsync(order, "orders:create")
+);
 
-app
-    .MapGet(
-        "/sendMessage/{topic}/{message}",
-        (IDispatcher dispatcher, IServiceProvider serviceProvider, string message, string topic = "foo:bar") =>
-        {
-            var ctx = serviceProvider.GetService<IHttpContextAccessor>();
-            return dispatcher.SendAsync(message, topic);
-        })
-    .WithDescription("Sends string message to single handler. Change topic to 'foo:42' to hit another handler");
+app.MapPut(
+    "/orders/{orderId:int}",
+    async ([FromRoute] int orderId, [FromBody] Order order, IDispatcher dispatcher)
+        => await dispatcher.SendAsync(order with { Id = orderId }, "orders:update")
+);
 
-app
-    .MapGet(
-        "/sendInheritedMessage",
-        (IDispatcher dispatcher) => dispatcher.SendAsync(new InheritedMessage())
-    )
-    .WithDescription("Sends InheritedMessage to BaseMessage handler");
+app.MapGet(
+    "/orders/{orderId:int}",
+    async ([FromRoute] int orderId, IDispatcher dispatcher)
+        => await dispatcher.RequestAsync(new OrderRequest(orderId))  
+);
 
-app
-    .MapGet(
-        "/sendInheritedRequest",
-        async (IDispatcher dispatcher) => Debug.WriteLine((await dispatcher.RequestAsync(new InheritedRequest())).GetType().Name)
-    )
-    .WithDescription("Sends InheritedRequest to BaseRequest handler");
+app.MapGet(
+    "/subscribe",
+    async (HttpContext httpContext, IHandlersRegister register) =>
+    {
+        httpContext.Response.Headers.Append(HeaderNames.ContentType, "text/event-stream");
 
-app
-    .MapGet(
-        "/sendWithException",
-        (IDispatcher dispatcher) => dispatcher.SendAsync(42, "exception")
-    )
-    .WithDescription("Sends int to handler that throws an exception");
-
-app
-    .MapGet(
-        "/publishMessage/{topic}/{message}",
-        (IDispatcher dispatcher, string message, string topic = "foo:42") => dispatcher.PublishAsync(message, topic)
-    )
-    .WithDescription("Publishes string message to all handlers");
-
-app
-    .MapGet(
-        "/subscribe",
-        async (HttpContext httpContext, IHandlersRegister register) =>
-        {
-            httpContext.Response.Headers.Append(HeaderNames.ContentType, "text/event-stream");
-
-            var handle = register
-                .AddMessageHandler<string>(async (string message) =>
-                {
-                    Debug.WriteLine("Scoped message handler");
-                    
-                    await httpContext.Response.WriteAsync($"event: string\n");
-                    await httpContext.Response.WriteAsync($"data: ");
-                    await httpContext.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(message));
-                    await httpContext.Response.WriteAsync($"\n\n");
-                    await httpContext.Response.Body.FlushAsync();
-                })
-                .Build();
-
-            await using (handle)
-            {
-                while (!httpContext.RequestAborted.IsCancellationRequested)
-                {
-                    await Task.Delay(1000);
-                }
-            }
-
-            return Results.Empty;
-        }
-    )
-    .WithDescription("Endpoint returns SSE stream based on published string messages");
-
-app
-    .MapGet(
-        "/stringStream",
-        async (HttpContext httpContext, IDispatcher dispatcher) =>
-        {
-            httpContext.Response.Headers.Append(HeaderNames.ContentType, "text/event-stream");
-
-            await foreach (var message in dispatcher.StreamAsync(new StringStreamRequest()))
+        var handle = register
+            .AddMessageHandler<string>("notifications", async (string message) =>
             {
                 await httpContext.Response.WriteAsync($"event: string\n");
                 await httpContext.Response.WriteAsync($"data: ");
                 await httpContext.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(message));
                 await httpContext.Response.WriteAsync($"\n\n");
                 await httpContext.Response.Body.FlushAsync();
-            }
+            })
+            .Build();
 
-            return Results.Empty;
-        }
-    )
-    .WithDescription("Endpoint returns SSE stream based on string stream response");
-
-app
-    .MapGet(
-        "/intStream",
-        async (HttpContext httpContext, IDispatcher dispatcher) =>
+        await using (handle)
         {
-            httpContext.Response.Headers.Append(HeaderNames.ContentType, "text/event-stream");
-
-            await foreach (var message in dispatcher.StreamAsync(new IntStreamRequest()))
+            while (!httpContext.RequestAborted.IsCancellationRequested)
             {
-                await httpContext.Response.WriteAsync($"event: string\n");
-                await httpContext.Response.WriteAsync($"data: ");
-                await httpContext.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(message.ToString()));
-                await httpContext.Response.WriteAsync($"\n\n");
-                await httpContext.Response.Body.FlushAsync();
+                await Task.Delay(1000);
             }
-
-            return Results.Empty;
         }
-    )
-    .WithDescription("Endpoint returns SSE stream based on int stream response");
+
+        return Results.Empty;
+    }
+);
 
 app.Run();

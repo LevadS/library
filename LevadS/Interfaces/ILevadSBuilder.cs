@@ -304,13 +304,4 @@ public interface ILevadSBuilder
         where TExceptionHandler : class, IStreamExceptionHandler<TRequest, TException>
         => AddStreamExceptionHandler<TRequest, TException, TExceptionHandler>("*", exceptionHandlerFactory);
     #endregion
-
-    // internal ILevadSBuilder AddLevada<TLevada>(string levadaName, Action<ILevadaBuilder<TLevada>> builder)
-    //     where TLevada : ILevada;
-
-    // ILevadSBuilder WarmUpMessageHandling<TMessage>();
-    //
-    // ILevadSBuilder WarmUpRequestHandling<TRequest, TResponse>();
-    //
-    // ILevadSBuilder WarmUpStreamHandling<TRequest, TResponse>();
 }

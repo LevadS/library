@@ -6,8 +6,7 @@ using LevadS.Delegates;
 using LevadS.Extensions;
 using LevadS.Interfaces;
 
-namespace LevadS.Services;
-
+namespace LevadS.Classes.Builders;
 
 internal class LevadSBuilder(IServiceRegister serviceRegister) :
     ILevadSBuilder,
@@ -219,50 +218,62 @@ internal class LevadSBuilder(IServiceRegister serviceRegister) :
         => serviceRegister.AddMessageDispatchFilter(topicPattern, filterFactory);
 
     public IDisposable AddMessageExceptionHandler<TMessage, TException>(string topicPattern,
-        MessageExceptionHandlerDelegate<TMessage, TException> exceptionHandlerDelegate) where TException : Exception
-    {
-        throw new NotImplementedException();
-    }
+        MessageExceptionHandlerDelegate<TMessage, TException> exceptionHandlerDelegate) 
+        where TException : Exception
+        => ((IMessageFiltersRegister)this).AddMessageFilter<TMessage, MessageExceptionHandlerDelegateWrapper<TMessage, TException>>(topicPattern, p => new MessageExceptionHandlerDelegateWrapper<TMessage, TException>(exceptionHandlerDelegate));
 
     public IDisposable AddMessageExceptionHandler<TMessage, TException, TExceptionHandler>(string topicPattern,
-        Func<IMessageExceptionContext<TMessage, TException>, TExceptionHandler>? exceptionHandlerFactory = null) where TException : Exception where TExceptionHandler : class, IMessageExceptionHandler<TMessage, TException>
-    {
-        throw new NotImplementedException();
-    }
+        Func<IMessageExceptionContext<TMessage, TException>, TExceptionHandler>? exceptionHandlerFactory = null) 
+        where TException : Exception 
+        where TExceptionHandler : class, IMessageExceptionHandler<TMessage, TException>
+        => ((IMessageFiltersRegister)this).AddMessageFilter<TMessage, MessageExceptionHandlerWrapper<TMessage, TException, TExceptionHandler>>(
+            topicPattern,
+            p => new MessageExceptionHandlerWrapper<TMessage, TException, TExceptionHandler>(exceptionHandlerFactory)
+        );
 
     public IDisposable AddRequestExceptionHandler<TRequest, TResponse, TException>(string topicPattern,
-        RequestExceptionHandlerDelegate<TRequest, TResponse, TException> exceptionHandlerDelegate) where TException : Exception
-    {
-        throw new NotImplementedException();
-    }
+        RequestExceptionHandlerDelegate<TRequest, TResponse, TException> exceptionHandlerDelegate) 
+        where TException : Exception
+        => ((IRequestFiltersRegister)this).AddRequestFilter<TRequest, TResponse, RequestExceptionHandlerDelegateWrapper<TRequest, TResponse, TException>>(topicPattern, p => new RequestExceptionHandlerDelegateWrapper<TRequest, TResponse, TException>(exceptionHandlerDelegate));
 
     public IDisposable AddRequestExceptionHandler<TRequest, TResponse, TException, TExceptionHandler>(string topicPattern,
-        Func<IRequestExceptionContext<TRequest, TException>, TExceptionHandler>? exceptionHandlerFactory = null) where TException : Exception where TExceptionHandler : class, IRequestExceptionHandler<TRequest, TResponse, TException>
-    {
-        throw new NotImplementedException();
-    }
+        Func<IRequestExceptionContext<TRequest, TException>, TExceptionHandler>? exceptionHandlerFactory = null) 
+        where TException : Exception 
+        where TExceptionHandler : class, IRequestExceptionHandler<TRequest, TResponse, TException>
+        => ((IRequestFiltersRegister)this).AddRequestFilter<TRequest, TResponse, RequestExceptionHandlerWrapper<TRequest, TResponse, TException, TExceptionHandler>>(
+            topicPattern,
+            p => new RequestExceptionHandlerWrapper<TRequest, TResponse, TException, TExceptionHandler>(exceptionHandlerFactory)
+        );
 
     public IDisposable AddRequestExceptionHandler<TRequest, TException, TExceptionHandler>(string topicPattern,
-        Func<IRequestExceptionContext<TRequest, TException>, TExceptionHandler>? exceptionHandlerFactory = null) where TException : Exception where TExceptionHandler : class, IRequestExceptionHandler<TRequest, TException>
-    {
-        throw new NotImplementedException();
-    }
+        Func<IRequestExceptionContext<TRequest, TException>, TExceptionHandler>? exceptionHandlerFactory = null) 
+        where TException : Exception 
+        where TExceptionHandler : class, IRequestExceptionHandler<TRequest, TException>
+        => ((IRequestFiltersRegister)this).AddRequestFilter<TRequest, RequestExceptionHandlerWrapper<TRequest, TException, TExceptionHandler>>(
+            topicPattern,
+            p => new RequestExceptionHandlerWrapper<TRequest, TException, TExceptionHandler>(exceptionHandlerFactory)
+        );
 
     public IDisposable AddStreamExceptionHandler<TRequest, TResponse, TException>(string topicPattern,
-        StreamExceptionHandlerDelegate<TRequest, TResponse, TException> exceptionHandlerDelegate) where TException : Exception
-    {
-        throw new NotImplementedException();
-    }
+        StreamExceptionHandlerDelegate<TRequest, TResponse, TException> exceptionHandlerDelegate) 
+        where TException : Exception
+        => ((IStreamFiltersRegister)this).AddStreamFilter<TRequest, TResponse, StreamExceptionHandlerDelegateWrapper<TRequest, TResponse, TException>>(topicPattern, p => new StreamExceptionHandlerDelegateWrapper<TRequest, TResponse, TException>(exceptionHandlerDelegate));
 
     public IDisposable AddStreamExceptionHandler<TRequest, TResponse, TException, TExceptionHandler>(string topicPattern,
-        Func<IStreamExceptionContext<TRequest, TException>, TExceptionHandler>? exceptionHandlerFactory = null) where TException : Exception where TExceptionHandler : class, IStreamExceptionHandler<TRequest, TResponse, TException>
-    {
-        throw new NotImplementedException();
-    }
+        Func<IStreamExceptionContext<TRequest, TException>, TExceptionHandler>? exceptionHandlerFactory = null) 
+        where TException : Exception 
+        where TExceptionHandler : class, IStreamExceptionHandler<TRequest, TResponse, TException>
+        => ((IStreamFiltersRegister)this).AddStreamFilter<TRequest, TResponse, StreamExceptionHandlerWrapper<TRequest, TResponse, TException, TExceptionHandler>>(
+            topicPattern,
+            p => new StreamExceptionHandlerWrapper<TRequest, TResponse, TException, TExceptionHandler>(exceptionHandlerFactory)
+        );
 
     public IDisposable AddStreamExceptionHandler<TRequest, TException, TExceptionHandler>(string topicPattern,
-        Func<IStreamExceptionContext<TRequest, TException>, TExceptionHandler>? exceptionHandlerFactory = null) where TException : Exception where TExceptionHandler : class, IStreamExceptionHandler<TRequest, TException>
-    {
-        throw new NotImplementedException();
-    }
+        Func<IStreamExceptionContext<TRequest, TException>, TExceptionHandler>? exceptionHandlerFactory = null) 
+        where TException : Exception 
+        where TExceptionHandler : class, IStreamExceptionHandler<TRequest, TException>
+        => ((IStreamFiltersRegister)this).AddStreamFilter<TRequest, StreamExceptionHandlerWrapper<TRequest, TException, TExceptionHandler>>(
+            topicPattern,
+            p => new StreamExceptionHandlerWrapper<TRequest, TException, TExceptionHandler>(exceptionHandlerFactory)
+        );
 }

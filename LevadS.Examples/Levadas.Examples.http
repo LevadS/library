@@ -1,6 +1,0 @@
-@Levadas.Examples_HostAddress = http://localhost:5219
-
-GET {{Levadas.Examples_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
