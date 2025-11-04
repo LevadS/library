@@ -8,78 +8,55 @@ namespace LevadS.Classes.Extensions;
 
 internal static class ServiceRegisterExtensions
 {
-    internal static void RegisterServices(this IServiceRegister serviceRegister, Assembly assembly, Type genericInterfaceType, Action<IServiceRegister, string, Type, Type, Type?> registerAction)
+    // New overload that scans the assembly once and registers all supported services/filters/handlers
+    internal static void RegisterServices(this IServiceRegister serviceRegister, Assembly assembly)
     {
-        var handlerTypes = assembly.FindImplementingTypes(genericInterfaceType);
-        foreach (var handlerType in handlerTypes)
+        ArgumentNullException.ThrowIfNull(assembly);
+
+        foreach (var ti in assembly.DefinedTypes)
         {
-            var scopeTypes = genericInterfaceType.IsAssignableTo(typeof(IFilter))
-                ? handlerType
-                    .GetCustomAttributes<BaseLevadSFilterForAttribute>(true)
-                    .Select(a => a.FilteredHandlerType)
-                    .ToArray()
-                : genericInterfaceType.IsAssignableTo(typeof(IExceptionHandler))
-                    ? handlerType
-                        .GetCustomAttributes<BaseLevadSExceptionHandlerForAttribute>(true)
-                        .Select(a => a.ProtectedHandlerType)
-                        .ToArray()
-                    : [];
-            
-            // regular registrations
-            var attributes = handlerType.GetCustomAttributes<LevadSRegistrationAttribute>(true);
-            foreach (var attribute in attributes)
+            if (!ti.IsClass) continue;
+
+            var handlerType = ti.AsType();
+
+            // Gather registration attributes (both regular and generic variants)
+            var registrationAttributes = handlerType.GetCustomAttributes<BaseLevadSRegistrationAttribute>(true).ToArray();
+            if (registrationAttributes.Length == 0) continue;
+
+            foreach (var attribute in registrationAttributes)
             {
-                if (handlerType is { IsGenericType: true, IsConstructedGenericType: false })
+                // Determine if this is a generic registration variant
+                var isGenericAttribute = attribute is BaseLevadSGenericRegistrationAttribute;
+
+                // Validate generic/open generic combinations similar to previous implementation
+                if (!isGenericAttribute && handlerType is { IsGenericType: true, IsConstructedGenericType: false })
                 {
                     throw new InvalidOperationException($"Handler type {(handlerType.FullName ?? handlerType.Name).ToReadableName()} is open generic, use LevadSGenericRegistration attribute to make it specific");
                 }
 
-                List<Type> interfaceTypes = [];
-                if (attribute.InterfaceType != null)
+                if (isGenericAttribute)
                 {
-                    interfaceTypes.Add(attribute.InterfaceType);
-                }
-                else
-                {
-                    interfaceTypes.AddRange(handlerType.GetTypeInfo().ImplementedInterfaces.Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == genericInterfaceType));
-                }
-
-                foreach (var interfaceType in interfaceTypes)
-                {
-                    if (scopeTypes.Length != 0)
+                    if (handlerType.IsConstructedGenericType)
                     {
-                        foreach (var scopeType in scopeTypes)
-                        {
-                            registerAction(serviceRegister, attribute.TopicPattern, interfaceType, handlerType, scopeType);
-                        }
+                        throw new InvalidOperationException($"Handler type {(handlerType.FullName ?? handlerType.Name).ToReadableName()} is constructed generic, use LevadSRegistration attribute");
                     }
-                    else
+
+                    if (attribute.ServiceType is not null && attribute.ServiceType!.GetGenericTypeDefinition() != handlerType)
                     {
-                        registerAction(serviceRegister, attribute.TopicPattern, interfaceType, handlerType, null);
+                        throw new InvalidOperationException($"Declared handler type {(attribute.ServiceType?.FullName ?? attribute.ServiceType?.Name ?? "<null>").ToReadableName()} does not match generic handler type {(handlerType.FullName ?? handlerType.Name).ToReadableName()}");
+                    }
+
+                    if (attribute.InterfaceType != null && attribute.ServiceType != null && !attribute.InterfaceType.IsAssignableFrom(attribute.ServiceType))
+                    {
+                        throw new InvalidOperationException(
+                            $"Declared handler interface {(attribute.InterfaceType?.FullName ?? attribute.InterfaceType?.Name ?? "<null>").ToReadableName()} does not match declared handler type {(attribute.ServiceType?.FullName ?? attribute.ServiceType?.Name ?? "<null>").ToReadableName()}");
                     }
                 }
-            }
-            
-            // generic registrations
-            var genericAttributes = handlerType.GetCustomAttributes<BaseLevadSGenericRegistrationAttribute>(true);
-            foreach (var attribute in genericAttributes)
-            {
-                if (handlerType.IsConstructedGenericType)
-                {
-                    throw new InvalidOperationException($"Handler type {(handlerType.FullName ?? handlerType.Name).ToReadableName()} is constructed generic, use LevadSRegistration attribute");
-                }
-                
-                if (attribute.ServiceType!.GetGenericTypeDefinition() != handlerType)
-                {
-                    throw new InvalidOperationException($"Declared handler type {(attribute.ServiceType?.FullName ?? attribute.ServiceType?.Name ?? "<null>").ToReadableName()} does not match generic handler type {(handlerType.FullName ?? handlerType.Name).ToReadableName()}");
-                }
-                
-                if (attribute.InterfaceType != null && !attribute.InterfaceType.IsAssignableFrom(attribute.ServiceType))
-                {
-                    throw new InvalidOperationException(
-                        $"Declared handler interface {(attribute.InterfaceType?.FullName ?? attribute.InterfaceType?.Name ?? "<null>").ToReadableName()} does not match declared handler type {(attribute.ServiceType?.FullName ?? attribute.ServiceType?.Name ?? "<null>").ToReadableName()}");
-                }
 
+                // Determine the concrete service type for registration context
+                var concreteServiceType = attribute.ServiceType ?? handlerType;
+
+                // Determine target interfaces for this attribute
                 List<Type> interfaceTypes = [];
                 if (attribute.InterfaceType != null)
                 {
@@ -88,32 +65,99 @@ internal static class ServiceRegisterExtensions
                 else
                 {
                     interfaceTypes.AddRange(
-                        (attribute.ServiceType ?? handlerType)
+                        concreteServiceType
                             .GetTypeInfo()
                             .ImplementedInterfaces
-                            .Where(i => 
-                                i.IsGenericType &&
-                                i.GetGenericTypeDefinition() == genericInterfaceType
-                            )
+                            .Where(i => i.IsGenericType)
+                            .Select(i => i)
                     );
                 }
 
                 foreach (var interfaceType in interfaceTypes)
                 {
-                    if (scopeTypes.Length != 0)
+                    if (!interfaceType.IsGenericType) continue;
+
+                    var gtd = interfaceType.GetGenericTypeDefinition();
+
+                    // Only process interfaces supported by LevadS
+                    var (enveloper, keyKind, scopeKind) = GetRegistrationMetadataForInterface(gtd);
+                    if (enveloper is null) continue; // unsupported interface
+
+                    // Resolve scope types for filters and exception handlers
+                    var scopeTypes = scopeKind switch
                     {
-                        foreach (var scopeType in scopeTypes)
+                        RegistrationScopeKind.Filter => handlerType
+                            .GetCustomAttributes<BaseLevadSFilterForAttribute>(true)
+                            .Select(a => a.FilteredHandlerType)
+                            .ToArray(),
+                        RegistrationScopeKind.ExceptionHandler => handlerType
+                            .GetCustomAttributes<BaseLevadSExceptionHandlerForAttribute>(true)
+                            .Select(a => a.ProtectedHandlerType)
+                            .ToArray(),
+                        _ => []
+                    };
+
+                    // Compute input/output generic arguments
+                    var args = interfaceType.GenericTypeArguments;
+                    var inputType = args[0];
+                    Type? outputType = null;
+                    if (gtd == typeof(IRequestHandler<,>) || gtd == typeof(IRequestDispatchFilter<,>) || gtd == typeof(IRequestHandlingFilter<,>) || gtd == typeof(IRequestExceptionHandler<,,>)
+                        || gtd == typeof(IStreamHandler<,>) || gtd == typeof(IStreamDispatchFilter<,>) || gtd == typeof(IStreamHandlingFilter<,>) || gtd == typeof(IStreamExceptionHandler<,,>))
+                    {
+                        outputType = args[1];
+                    }
+
+                    // Determine key for registration
+                    var key = keyKind switch
+                    {
+                        RegistrationKeyKind.HandlerType => $"{handlerType}",
+                        RegistrationKeyKind.Scope => null, // handled below when needsScope
+                        _ => null
+                    };
+
+                    // Perform registration(s)
+                    if (scopeKind != RegistrationScopeKind.None)
+                    {
+                        if (scopeTypes.Length != 0)
                         {
-                            registerAction(serviceRegister, attribute.TopicPattern, interfaceType, attribute.ServiceType ?? handlerType, scopeType);
+                            foreach (var scopeType in scopeTypes)
+                            {
+                                serviceRegister.AddService(interfaceType, concreteServiceType, inputType, outputType, enveloper, attribute.TopicPattern, $"{scopeType}");
+                            }
+                        }
+                        else
+                        {
+                            serviceRegister.AddService(interfaceType, concreteServiceType, inputType, outputType, enveloper, attribute.TopicPattern, "global");
                         }
                     }
                     else
                     {
-                        registerAction(serviceRegister, attribute.TopicPattern, interfaceType, attribute.ServiceType ?? handlerType, null);
+                        serviceRegister.AddService(interfaceType, concreteServiceType, inputType, outputType, enveloper, attribute.TopicPattern, key);
                     }
                 }
             }
         }
+    }
+    
+    // Local mapping helper
+    private static (IServiceEnveloper? enveloper, RegistrationKeyKind keyKind, RegistrationScopeKind scopeKind) GetRegistrationMetadataForInterface(Type genericInterfaceDefinition)
+    {
+        if (genericInterfaceDefinition == typeof(IMessageHandler<>)) return (NoopEnveloper.Instance, RegistrationKeyKind.HandlerType, RegistrationScopeKind.None);
+        if (genericInterfaceDefinition == typeof(IMessageDispatchFilter<>)) return (MessageDispatchEnveloper.Instance, RegistrationKeyKind.None, RegistrationScopeKind.None);
+        if (genericInterfaceDefinition == typeof(IMessageExceptionHandler<,>)) return (MessageHandlingEnveloper.Instance, RegistrationKeyKind.Scope, RegistrationScopeKind.ExceptionHandler);
+        if (genericInterfaceDefinition == typeof(IMessageHandlingFilter<>)) return (MessageHandlingEnveloper.Instance, RegistrationKeyKind.Scope, RegistrationScopeKind.Filter);
+
+        if (genericInterfaceDefinition == typeof(IRequestHandler<,>)) return (NoopEnveloper.Instance, RegistrationKeyKind.HandlerType, RegistrationScopeKind.None);
+        if (genericInterfaceDefinition == typeof(IRequestDispatchFilter<,>)) return (RequestDispatchEnveloper.Instance, RegistrationKeyKind.None, RegistrationScopeKind.None);
+        if (genericInterfaceDefinition == typeof(IRequestHandlingFilter<,>)) return (RequestHandlingEnveloper.Instance, RegistrationKeyKind.Scope, RegistrationScopeKind.Filter);
+        if (genericInterfaceDefinition == typeof(IRequestExceptionHandler<,,>)) return (RequestHandlingEnveloper.Instance, RegistrationKeyKind.Scope, RegistrationScopeKind.ExceptionHandler);
+
+        if (genericInterfaceDefinition == typeof(IStreamHandler<,>)) return (NoopEnveloper.Instance, RegistrationKeyKind.HandlerType, RegistrationScopeKind.None);
+        if (genericInterfaceDefinition == typeof(IStreamDispatchFilter<,>)) return (StreamDispatchEnveloper.Instance, RegistrationKeyKind.None, RegistrationScopeKind.None);
+        if (genericInterfaceDefinition == typeof(IStreamHandlingFilter<,>)) return (StreamHandlingEnveloper.Instance, RegistrationKeyKind.Scope, RegistrationScopeKind.Filter);
+        if (genericInterfaceDefinition == typeof(IStreamExceptionHandler<,,>)) return (StreamHandlingEnveloper.Instance, RegistrationKeyKind.Scope, RegistrationScopeKind.ExceptionHandler);
+
+        return (null, RegistrationKeyKind.None, RegistrationScopeKind.None);
     }
 
     internal static IDisposable AddMessageHandler<TMessage, TMessageHandler>(this IServiceRegister serviceRegister, string topicPattern = "*", Func<IMessageContext<TMessage>, TMessageHandler>? factory = null, string? key = null)
@@ -214,15 +258,6 @@ internal static class ServiceRegisterExtensions
         LogFilterRegistration("Stream", "Dispatch", typeof(TRequest), topicPattern);
         return serviceRegister.Register<IStreamDispatchFilter<TRequest, TResponse>, TStreamDispatchFilter, TRequest, TResponse>(new StreamDispatchEnveloper(), topicPattern, c => factory((IStreamContext<TRequest>)c));
     }
-    
-    
-    
-    
-    
-    
-    
-
-
     internal static IDisposable AddService(
         this IServiceRegister serviceRegister,
         Type serviceType,
@@ -263,4 +298,18 @@ internal static class ServiceRegisterExtensions
                 : "";
         Debug.WriteLine($"⦗-●)-⦘ Registered{scopeText} {kind} {service} for '{readable}' with topic pattern '{topicPattern}'");
     }
+}
+
+internal enum RegistrationKeyKind
+{
+    None,
+    HandlerType,
+    Scope
+}
+
+internal enum RegistrationScopeKind
+{
+    None,
+    Filter,
+    ExceptionHandler
 }

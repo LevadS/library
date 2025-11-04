@@ -52,7 +52,7 @@ Handlers can be registered and disposed at runtime
 
 Two stages of processing = two types of filters:
 
-1. **Dispatch filters** are called on dispatch and can modify topic / headers
+1. **Dispatch filters** are to gather context and set up routing
 
 2. **Handling filters** are making a separated pipeline to each invoked handler            
 
